@@ -31,5 +31,5 @@ func (r *ResolverForStatistics) Stats2(ctx context.Context, now model.Time, stat
 		ranges = append(ranges, &gqlmodel.Range{Start: model.Time(r.From), End: model.Time(r.To)})
 	}
 
-	return r.Stats(ctx, ranges, stats.Tags, stats.ExcludeTags, stats.IncludeTags)
+	return r.stats(ctx, ranges, stats.Tags, stats.ExcludeTags, stats.IncludeTags, &now)
 }

@@ -15,6 +15,10 @@ import (
 
 // Stats groups the time spans by tag key.
 func (r *ResolverForStatistics) Stats(ctx context.Context, ranges []*gqlmodel.Range, tags []string, excludeTags []*gqlmodel.InputTimeSpanTag, requireTags []*gqlmodel.InputTimeSpanTag) ([]*gqlmodel.RangedStatisticsEntries, error) {
+	return r.stats(ctx, ranges, tags, excludeTags, requireTags, nil)
+}
+
+func (r *ResolverForStatistics) stats(ctx context.Context, ranges []*gqlmodel.Range, tags []string, excludeTags []*gqlmodel.InputTimeSpanTag, requireTags []*gqlmodel.InputTimeSpanTag, now *model.Time) ([]*gqlmodel.RangedStatisticsEntries, error) {
 	if len(ranges) == 0 {
 		return nil, errors.New("ranges may not be empty")
 	}
@@ -35,6 +39,14 @@ func (r *ResolverForStatistics) Stats(ctx context.Context, ranges []*gqlmodel.Ra
 	queryExclude, excludeVars := build(excludeTags, "1 != 1")
 	variables = append(variables, excludeVars...)
 
+	// Use provided 'now' parameter if available, otherwise use datetime('now')
+	nowClause := "datetime('now')"
+	if now != nil {
+		nowClause = "?"
+		// The now parameter is used twice in the query, so we need to add it twice
+		variables = append(variables, now.OmitTimeZone(), now.OmitTimeZone())
+	}
+
 	query := fmt.Sprintf(`
 WITH dates(query_start, query_end) AS (
     VALUES %s
@@ -43,7 +55,7 @@ SELECT query_start                       as query_start,
        query_end                         as query_end,
        key                               as key,
        string_value                      as string_value,
-       sum(round((julianday(CASE WHEN COALESCE(end_user_time, datetime('now')) > query_end THEN query_end ELSE COALESCE(end_user_time, datetime('now')) END) -
+       sum(round((julianday(CASE WHEN COALESCE(end_user_time, %s) > query_end THEN query_end ELSE COALESCE(end_user_time, %s) END) -
                   julianday(CASE WHEN start_user_time < query_start THEN query_start ELSE start_user_time END))
                      * 24 * 60 * 60, 0)) as time_spend_in_seconds
 FROM dates
@@ -66,7 +78,7 @@ WHERE (key in (?))
 GROUP BY query_start,
          key,
          string_value;
-`, queryRanges, queryRequire, queryExclude)
+`, queryRanges, nowClause, nowClause, queryRequire, queryExclude)
 	variables = append(variables, tags, auth.GetUser(ctx).ID)
 
 	var entries []statReturn
