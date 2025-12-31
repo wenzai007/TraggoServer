@@ -14,6 +14,7 @@ interface DashboardPieChartProps {
     type: 'stacked' | 'normal';
     total: boolean;
     groupByPrefix?: boolean;
+    tagColorMap?: Record<string, string>;
 }
 
 interface Indexed {
@@ -22,7 +23,7 @@ interface Indexed {
     data: Record<string, number>;
 }
 
-export const DashboardBarChart: React.FC<DashboardPieChartProps> = ({entries, interval, type, total, groupByPrefix = false}) => {
+export const DashboardBarChart: React.FC<DashboardPieChartProps> = ({entries, interval, type, total, groupByPrefix = false, tagColorMap = {}}) => {
     const indexedEntries: Indexed[] = entries
         .map((entry) => {
             return {
@@ -44,6 +45,14 @@ export const DashboardBarChart: React.FC<DashboardPieChartProps> = ({entries, in
     }, 0);
     const unit = ofSeconds(dataMax);
     const dateFormat = ofInterval(interval);
+
+    // Function to get color for a tag key
+    const getColor = (key: string, index: number): string => {
+        // Extract the tag key (before the colon if not groupByPrefix)
+        const tagKey = key.split(':')[0];
+        return tagColorMap[tagKey] || Colors[index % Colors.length];
+    };
+
     return (
         <ResponsiveContainer>
             <BarChart data={indexedEntries}>
@@ -59,7 +68,7 @@ export const DashboardBarChart: React.FC<DashboardPieChartProps> = ({entries, in
                             <Bar
                                 key={key}
                                 dataKey={(entry) => unit.toUnit(entry.data[key])}
-                                fill={Colors[index % Colors.length]}
+                                fill={getColor(key, index)}
                                 stackId={type === 'stacked' ? 'a' : undefined}
                                 name={key}
                             />

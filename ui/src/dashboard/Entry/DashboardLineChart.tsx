@@ -13,6 +13,7 @@ interface DashboardPieChartProps {
     interval: StatsInterval;
     total: boolean;
     groupByPrefix?: boolean;
+    tagColorMap?: Record<string, string>;
 }
 
 interface Indexed {
@@ -21,7 +22,7 @@ interface Indexed {
     data: Record<string, number>;
 }
 
-export const DashboardLineChart: React.FC<DashboardPieChartProps> = ({entries, interval, total, groupByPrefix = false}) => {
+export const DashboardLineChart: React.FC<DashboardPieChartProps> = ({entries, interval, total, groupByPrefix = false, tagColorMap = {}}) => {
     const indexedEntries: Indexed[] = entries
         .map((entry) => {
             return {
@@ -43,6 +44,14 @@ export const DashboardLineChart: React.FC<DashboardPieChartProps> = ({entries, i
     }, 0);
     const unit = ofSeconds(dataMax);
     const dateFormat = ofInterval(interval);
+
+    // Function to get color for a tag key
+    const getColor = (key: string, index: number): string => {
+        // Extract the tag key (before the colon if not groupByPrefix)
+        const tagKey = key.split(':')[0];
+        return tagColorMap[tagKey] || Colors[index % Colors.length];
+    };
+
     return (
         <ResponsiveContainer>
             <LineChart data={indexedEntries}>
@@ -59,7 +68,7 @@ export const DashboardLineChart: React.FC<DashboardPieChartProps> = ({entries, i
                                 key={key}
                                 dataKey={(entry) => unit.toUnit(entry.data[key])}
                                 strokeWidth={3}
-                                stroke={Colors[index % Colors.length]}
+                                stroke={getColor(key, index)}
                                 name={key}
                             />
                         );

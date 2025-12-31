@@ -8,10 +8,12 @@ export const groupEntriesByPrefix = (entries: Stats_stats_entries[]): Stats_stat
         grouped[prefix] = (grouped[prefix] || 0) + entry.timeSpendInSeconds;
     });
 
-    return Object.entries(grouped).map(([key, timeSpendInSeconds]) => ({
-        key,
-        value: '',
-        timeSpendInSeconds,
-        __typename: 'StatisticsEntry' as const,
-    }));
+    return Object.entries(grouped)
+        .map(([key, timeSpendInSeconds]) => ({
+            key,
+            value: '',
+            timeSpendInSeconds,
+            __typename: 'StatisticsEntry' as const,
+        }))
+        .sort((a, b) => b.timeSpendInSeconds - a.timeSpendInSeconds); // Sort by time descending
 };

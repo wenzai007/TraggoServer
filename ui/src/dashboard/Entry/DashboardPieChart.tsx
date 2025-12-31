@@ -9,10 +9,18 @@ import Paper from '@material-ui/core/Paper';
 interface DashboardPieChartProps {
     entries: Stats_stats_entries[];
     groupByPrefix?: boolean;
+    tagColorMap?: Record<string, string>;
 }
 
-export const DashboardPieChart: React.FC<DashboardPieChartProps> = ({entries, groupByPrefix = false}) => {
+export const DashboardPieChart: React.FC<DashboardPieChartProps> = ({entries, groupByPrefix = false, tagColorMap = {}}) => {
     const total = entries.map((e) => e.timeSpendInSeconds).reduce((x, y) => x + y, 0);
+
+    // Function to get color for an entry
+    const getColor = (entry: Stats_stats_entries, index: number): string => {
+        const tagKey = entry.key;
+        return tagColorMap[tagKey] || Colors[index % Colors.length];
+    };
+
     return (
         <ResponsiveContainer>
             <PieChart>
@@ -27,8 +35,8 @@ export const DashboardPieChart: React.FC<DashboardPieChartProps> = ({entries, gr
                     labelLine={false}
                     fill="#8884d8"
                     legendType={'square'}>
-                    {entries.map((_, index) => (
-                        <Cell key={index} fill={Colors[index % Colors.length]} />
+                    {entries.map((entry, index) => (
+                        <Cell key={index} fill={getColor(entry, index)} />
                     ))}
                 </Pie>
                 <Tooltip content={<CustomTooltip total={total} groupByPrefix={groupByPrefix} />} />
