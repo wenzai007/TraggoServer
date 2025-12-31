@@ -18,6 +18,7 @@ export const Dashboards = gql`
                 id
                 title
                 total
+                groupByPrefix
                 entryType
                 statsSelection {
                     range {
@@ -96,9 +97,10 @@ export const UpdateDashboardEntry = gql`
         $entryType: EntryType!
         $title: String!
         $total: Boolean!
+        $groupByPrefix: Boolean!
         $stats: InputStatsSelection!
     ) {
-        updateDashboardEntry(entryId: $entryId, entryType: $entryType, title: $title, total: $total, stats: $stats) {
+        updateDashboardEntry(entryId: $entryId, entryType: $entryType, title: $title, total: $total, groupByPrefix: $groupByPrefix, stats: $stats) {
             id
         }
     }
@@ -109,6 +111,7 @@ export const AddDashboardEntry = gql`
         $entryType: EntryType!
         $title: String!
         $total: Boolean!
+        $groupByPrefix: Boolean!
         $stats: InputStatsSelection!
         $pos: InputResponsiveDashboardEntryPos
     ) {
@@ -117,6 +120,7 @@ export const AddDashboardEntry = gql`
             entryType: $entryType
             title: $title
             total: $total
+            groupByPrefix: $groupByPrefix
             stats: $stats
             pos: $pos
         ) {

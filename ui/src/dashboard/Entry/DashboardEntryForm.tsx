@@ -197,6 +197,20 @@ export const DashboardEntryForm: React.FC<EditPopupProps> = ({entry, onChange: s
             ) : (
                 undefined
             )}
+            <Typography component="div">
+                <Grid component="label" container alignItems="center" spacing={1}>
+                    <Grid item>Group by tag prefix only (ignore postfix after colon):</Grid>
+                    <Grid item>
+                        <Switch
+                            checked={entry.groupByPrefix}
+                            onChange={(e) => {
+                                entry.groupByPrefix = e.target.checked;
+                                setEntry(entry);
+                            }}
+                        />
+                    </Grid>
+                </Grid>
+            </Typography>
             <FormTagSelector
                 label="Tags"
                 selectedEntries={tagKeys || []}

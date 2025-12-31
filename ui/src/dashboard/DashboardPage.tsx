@@ -75,6 +75,7 @@ const newEntry = (): Dashboards_dashboards_items => {
             },
         },
         total: false,
+        groupByPrefix: false,
     };
 };
 

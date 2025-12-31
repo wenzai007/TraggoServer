@@ -26,17 +26,18 @@ type Dashboard struct {
 
 // DashboardEntry an entry which represents a diagram in a dashboard.
 type DashboardEntry struct {
-	ID          int `gorm:"primary_key;unique_index;AUTO_INCREMENT"`
-	DashboardID int `gorm:"type:int REFERENCES dashboards(id) ON DELETE CASCADE"`
-	Title       string
-	Total       bool `gorm:"default:false"`
-	Type        DashboardType
-	Keys        string
-	Interval    Interval
-	RangeID     int
-	RangeFrom   string
-	RangeTo     string
-	TagFilters  []DashboardTagFilter
+	ID            int `gorm:"primary_key;unique_index;AUTO_INCREMENT"`
+	DashboardID   int `gorm:"type:int REFERENCES dashboards(id) ON DELETE CASCADE"`
+	Title         string
+	Total         bool `gorm:"default:false"`
+	GroupByPrefix bool `gorm:"default:false"`
+	Type          DashboardType
+	Keys          string
+	Interval      Interval
+	RangeID       int
+	RangeFrom     string
+	RangeTo       string
+	TagFilters    []DashboardTagFilter
 
 	MobilePosition  string
 	DesktopPosition string

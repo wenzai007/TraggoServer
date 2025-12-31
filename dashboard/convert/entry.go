@@ -52,6 +52,7 @@ func ToExternalEntry(entry model.DashboardEntry) (*gqlmodel.DashboardEntry, erro
 		ID:             entry.ID,
 		Title:          entry.Title,
 		Total:          entry.Total,
+		GroupByPrefix:  entry.GroupByPrefix,
 		Pos:            &pos,
 		StatsSelection: stats,
 		EntryType:      ExternalEntryType(entry.Type),

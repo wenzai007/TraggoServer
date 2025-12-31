@@ -12,6 +12,7 @@ interface DashboardTableProps {
     interval: StatsInterval;
     mode: 'vertical' | 'horizontal';
     total: boolean;
+    groupByPrefix?: boolean;
 }
 
 interface Indexed {
@@ -20,14 +21,15 @@ interface Indexed {
     data: Record<string, number>;
 }
 
-export const DashboardTable: React.FC<DashboardTableProps> = ({entries, interval, mode, total}) => {
+export const DashboardTable: React.FC<DashboardTableProps> = ({entries, interval, mode, total, groupByPrefix = false}) => {
     const indexedEntries: Indexed[] = entries
         .map((entry) => {
             const result = {
                 start: entry.start,
                 end: entry.end,
                 data: entry.entries!.reduce((all: Record<string, number>, current) => {
-                    return {...all, [current.key + ':' + current.value]: current.timeSpendInSeconds};
+                    const key = groupByPrefix ? current.key : current.key + ':' + current.value;
+                    return {...all, [key]: current.timeSpendInSeconds};
                 }, {}),
             };
             if (total) {

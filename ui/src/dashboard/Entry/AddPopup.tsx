@@ -84,6 +84,7 @@ export const AddPopup: React.FC<EditPopupProps> = ({
                                             entryType: entry.entryType,
                                             title: entry.title,
                                             total: entry.total,
+                                            groupByPrefix: entry.groupByPrefix,
                                             stats: {
                                                 tags: entry.statsSelection.tags,
                                                 interval: entry.statsSelection.interval,
