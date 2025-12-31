@@ -16,7 +16,7 @@ import (
 )
 
 // UpdateDashboardEntry updates a dashboard entry.
-func (r *ResolverForEntry) UpdateDashboardEntry(ctx context.Context, id int, entryType *gqlmodel.EntryType, title *string, total *bool, stats *gqlmodel.InputStatsSelection, pos *gqlmodel.InputResponsiveDashboardEntryPos) (*gqlmodel.DashboardEntry, error) {
+func (r *ResolverForEntry) UpdateDashboardEntry(ctx context.Context, id int, entryType *gqlmodel.EntryType, title *string, total *bool, groupByPrefix *bool, stats *gqlmodel.InputStatsSelection, pos *gqlmodel.InputResponsiveDashboardEntryPos) (*gqlmodel.DashboardEntry, error) {
 	userID := auth.GetUser(ctx).ID
 
 	entry, err := util.FindDashboardEntry(r.DB, id)
@@ -34,6 +34,10 @@ func (r *ResolverForEntry) UpdateDashboardEntry(ctx context.Context, id int, ent
 
 	if total != nil {
 		entry.Total = *total
+	}
+
+	if groupByPrefix != nil {
+		entry.GroupByPrefix = *groupByPrefix
 	}
 
 	tx := r.DB.Begin()

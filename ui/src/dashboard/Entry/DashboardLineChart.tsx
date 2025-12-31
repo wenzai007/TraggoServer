@@ -12,6 +12,7 @@ interface DashboardPieChartProps {
     entries: Stats_stats[];
     interval: StatsInterval;
     total: boolean;
+    groupByPrefix?: boolean;
 }
 
 interface Indexed {
@@ -20,14 +21,15 @@ interface Indexed {
     data: Record<string, number>;
 }
 
-export const DashboardLineChart: React.FC<DashboardPieChartProps> = ({entries, interval, total}) => {
+export const DashboardLineChart: React.FC<DashboardPieChartProps> = ({entries, interval, total, groupByPrefix = false}) => {
     const indexedEntries: Indexed[] = entries
         .map((entry) => {
             return {
                 start: entry.start,
                 end: entry.end,
                 data: entry.entries!.reduce((all: Record<string, number>, current) => {
-                    return {...all, [current.key + ':' + current.value]: current.timeSpendInSeconds};
+                    const key = groupByPrefix ? current.key : current.key + ':' + current.value;
+                    return {...all, [key]: current.timeSpendInSeconds};
                 }, {}),
             };
         })

@@ -16,6 +16,7 @@ import {CenteredSpinner} from '../../common/CenteredSpinner';
 import {Center} from '../../common/Center';
 import {findRange, Range} from '../../utils/range';
 import {DashboardTable} from './DashboardTable';
+import {groupEntriesByPrefix} from './groupByPrefix';
 
 interface DashboardEntryProps {
     entry: Dashboards_dashboards_items;
@@ -79,19 +80,26 @@ const SpecificDashboardEntry: React.FC<{entry: Dashboards_dashboards_items; rang
     }
 
     const entries = (stats.data && stats.data.stats) || [];
+
+    // Apply prefix grouping if enabled
+    const processedFirstEntries = entry.groupByPrefix ? groupEntriesByPrefix(firstEntries) : firstEntries;
+    const processedEntries = entry.groupByPrefix
+        ? entries.map(e => ({...e, entries: e.entries ? groupEntriesByPrefix(e.entries) : []}))
+        : entries;
+
     switch (entry.entryType) {
         case EntryType.PieChart:
-            return <DashboardPieChart entries={firstEntries} />;
+            return <DashboardPieChart entries={processedFirstEntries} groupByPrefix={entry.groupByPrefix} />;
         case EntryType.BarChart:
-            return <DashboardBarChart entries={entries} interval={interval} type="normal" total={entry.total} />;
+            return <DashboardBarChart entries={processedEntries} interval={interval} type="normal" total={entry.total} groupByPrefix={entry.groupByPrefix} />;
         case EntryType.StackedBarChart:
-            return <DashboardBarChart entries={entries} interval={interval} type="stacked" total={entry.total} />;
+            return <DashboardBarChart entries={processedEntries} interval={interval} type="stacked" total={entry.total} groupByPrefix={entry.groupByPrefix} />;
         case EntryType.LineChart:
-            return <DashboardLineChart entries={entries} interval={interval} total={entry.total} />;
+            return <DashboardLineChart entries={processedEntries} interval={interval} total={entry.total} groupByPrefix={entry.groupByPrefix} />;
         case EntryType.VerticalTable:
-            return <DashboardTable mode="vertical" entries={entries} interval={interval} total={entry.total} />;
+            return <DashboardTable mode="vertical" entries={processedEntries} interval={interval} total={entry.total} groupByPrefix={entry.groupByPrefix} />;
         case EntryType.HorizontalTable:
-            return <DashboardTable mode="horizontal" entries={entries} interval={interval} total={entry.total} />;
+            return <DashboardTable mode="horizontal" entries={processedEntries} interval={interval} total={entry.total} groupByPrefix={entry.groupByPrefix} />;
         default:
             return expectNever(entry.entryType);
     }

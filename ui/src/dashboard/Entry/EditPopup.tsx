@@ -70,6 +70,7 @@ export const EditPopup: React.FC<EditPopupProps> = ({entry, anchorEl, onChange: 
                                             entryType: entry.entryType,
                                             title: entry.title,
                                             total: entry.total,
+                                            groupByPrefix: entry.groupByPrefix,
                                             stats: {
                                                 tags: entry.statsSelection.tags,
                                                 interval: entry.statsSelection.interval,
