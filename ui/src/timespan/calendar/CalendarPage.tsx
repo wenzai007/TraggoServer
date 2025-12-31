@@ -125,16 +125,43 @@ export const CalendarPage: React.FC = () => {
         ) {
             return [];
         }
+
+        // Create a map of tag keys to their colors from the database
+        const tagColorMap = new Map<string, string>();
+        tagsResult.data.tags.forEach(tag => {
+            tagColorMap.set(tag.key, tag.color);
+        });
+
         return timeSpansResult.data.timeSpans.timeSpans
             .concat(trackersResult.data.timers)
             .sort((a, b) => a.start.toString().localeCompare(b.start.toString()))
             .map((ts) => {
-                const colorKey = ts
-                    .tags!.map((t) => t.key + ':' + t.value)
-                    .sort((a, b) => a.localeCompare(b))
-                    .join(' ');
-                const color = calculateColor(colorKey, ColorMode.Bold, theme.palette.type);
-                const borderColor = calculateColor(colorKey, ColorMode.None, theme.palette.type);
+                // Use the first tag's color from the database, or fall back to calculated color
+                let color: string;
+                let borderColor: string;
+
+                if (ts.tags && ts.tags.length > 0) {
+                    const firstTagKey = ts.tags[0].key;
+                    const dbColor = tagColorMap.get(firstTagKey);
+
+                    if (dbColor) {
+                        // Use database color for the first tag
+                        color = dbColor;
+                        borderColor = dbColor;
+                    } else {
+                        // Fall back to calculated color if tag not found
+                        const colorKey = ts.tags.map((t) => t.key + ':' + t.value)
+                            .sort((a, b) => a.localeCompare(b))
+                            .join(' ');
+                        color = calculateColor(colorKey, ColorMode.Bold, theme.palette.type);
+                        borderColor = calculateColor(colorKey, ColorMode.None, theme.palette.type);
+                    }
+                } else {
+                    // No tags, use default color
+                    color = theme.palette.grey[500];
+                    borderColor = theme.palette.grey[700];
+                }
+
                 return {
                     start: moment(ts.start).toDate(),
                     end: moment(ts.end || currentDate).toDate(),
