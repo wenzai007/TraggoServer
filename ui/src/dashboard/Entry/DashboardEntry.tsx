@@ -4,6 +4,7 @@ import {DashboardPieChart} from './DashboardPieChart';
 import {Stats_stats_entries} from '../../gql/__generated__/Stats';
 import {useQuery} from '@apollo/react-hooks';
 import * as gqlStats from '../../gql/statistics';
+import * as gqlTags from '../../gql/tags';
 import {Paper} from '@material-ui/core';
 import Typography from '@material-ui/core/Typography';
 import moment from 'moment-timezone';
@@ -17,6 +18,7 @@ import {Center} from '../../common/Center';
 import {findRange, Range} from '../../utils/range';
 import {DashboardTable} from './DashboardTable';
 import {groupEntriesByPrefix} from './groupByPrefix';
+import {Tags} from '../../gql/__generated__/Tags';
 
 interface DashboardEntryProps {
     entry: Dashboards_dashboards_items;
@@ -58,7 +60,9 @@ const SpecificDashboardEntry: React.FC<{entry: Dashboards_dashboards_items; rang
         fetchPolicy: 'cache-and-network',
     });
 
-    if (stats.loading) {
+    const tagsResult = useQuery<Tags>(gqlTags.Tags);
+
+    if (stats.loading || tagsResult.loading) {
         return <CenteredSpinner />;
     }
 
@@ -69,6 +73,15 @@ const SpecificDashboardEntry: React.FC<{entry: Dashboards_dashboards_items; rang
             </Center>
         );
     }
+
+    // Build tag color map
+    const tagColorMap: Record<string, string> = {};
+    if (tagsResult.data && tagsResult.data.tags) {
+        tagsResult.data.tags.forEach(tag => {
+            tagColorMap[tag.key] = tag.color;
+        });
+    }
+
     const firstEntries: Stats_stats_entries[] =
         (stats.data && stats.data.stats && stats.data.stats[0] && stats.data.stats[0].entries) || [];
     if (firstEntries.length === 0) {
@@ -81,21 +94,23 @@ const SpecificDashboardEntry: React.FC<{entry: Dashboards_dashboards_items; rang
 
     const entries = (stats.data && stats.data.stats) || [];
 
-    // Apply prefix grouping if enabled
-    const processedFirstEntries = entry.groupByPrefix ? groupEntriesByPrefix(firstEntries) : firstEntries;
+    // Apply prefix grouping if enabled, and sort by time
+    const processedFirstEntries = entry.groupByPrefix
+        ? groupEntriesByPrefix(firstEntries)
+        : [...firstEntries].sort((a, b) => b.timeSpendInSeconds - a.timeSpendInSeconds);
     const processedEntries = entry.groupByPrefix
         ? entries.map(e => ({...e, entries: e.entries ? groupEntriesByPrefix(e.entries) : []}))
-        : entries;
+        : entries.map(e => ({...e, entries: e.entries ? [...e.entries].sort((a, b) => b.timeSpendInSeconds - a.timeSpendInSeconds) : []}));
 
     switch (entry.entryType) {
         case EntryType.PieChart:
-            return <DashboardPieChart entries={processedFirstEntries} groupByPrefix={entry.groupByPrefix} />;
+            return <DashboardPieChart entries={processedFirstEntries} groupByPrefix={entry.groupByPrefix} tagColorMap={tagColorMap} />;
         case EntryType.BarChart:
-            return <DashboardBarChart entries={processedEntries} interval={interval} type="normal" total={entry.total} groupByPrefix={entry.groupByPrefix} />;
+            return <DashboardBarChart entries={processedEntries} interval={interval} type="normal" total={entry.total} groupByPrefix={entry.groupByPrefix} tagColorMap={tagColorMap} />;
         case EntryType.StackedBarChart:
-            return <DashboardBarChart entries={processedEntries} interval={interval} type="stacked" total={entry.total} groupByPrefix={entry.groupByPrefix} />;
+            return <DashboardBarChart entries={processedEntries} interval={interval} type="stacked" total={entry.total} groupByPrefix={entry.groupByPrefix} tagColorMap={tagColorMap} />;
         case EntryType.LineChart:
-            return <DashboardLineChart entries={processedEntries} interval={interval} total={entry.total} groupByPrefix={entry.groupByPrefix} />;
+            return <DashboardLineChart entries={processedEntries} interval={interval} total={entry.total} groupByPrefix={entry.groupByPrefix} tagColorMap={tagColorMap} />;
         case EntryType.VerticalTable:
             return <DashboardTable mode="vertical" entries={processedEntries} interval={interval} total={entry.total} groupByPrefix={entry.groupByPrefix} />;
         case EntryType.HorizontalTable:
