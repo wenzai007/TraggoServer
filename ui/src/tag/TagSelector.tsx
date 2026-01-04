@@ -26,6 +26,8 @@ const useStyles = makeStyles((theme: Theme) => ({
         position: 'absolute',
         zIndex: 1,
         marginTop: theme.spacing(1),
+        maxHeight: 240,
+        overflowY: 'auto',
     },
 }));
 
