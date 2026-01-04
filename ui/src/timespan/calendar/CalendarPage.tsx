@@ -1,5 +1,5 @@
 import * as React from 'react';
-import {Paper, useTheme} from '@material-ui/core';
+import {Paper, useTheme, Button, Grid, TextField} from '@material-ui/core';
 import moment from 'moment';
 import {useApolloClient, useMutation, useQuery} from '@apollo/react-hooks';
 import {TimeSpans_timeSpans_timeSpans} from '../../gql/__generated__/TimeSpans';
@@ -55,6 +55,9 @@ const StartTimerId = '-1';
 export const CalendarPage: React.FC = () => {
     const apollo = useApolloClient();
     const theme = useTheme();
+    const calendarRef = React.useRef<FullCalendar>(null);
+    const [selectedDate, setSelectedDate] = React.useState<string>(moment().format('YYYY-MM-DD'));
+
     const timeSpansResult = useQuery<TimeSpansInRange, TimeSpansInRangeVariables>(gqlTimeSpan.TimeSpansInRange, {
         variables: {
             start: moment()
@@ -238,18 +241,56 @@ export const CalendarPage: React.FC = () => {
         values.push(startTimerEvent);
     }
 
+    const handleGoToDate = () => {
+        const calendarApi = calendarRef.current && calendarRef.current.getApi();
+        if (calendarApi) {
+            calendarApi.gotoDate(selectedDate);
+        }
+    };
+
     return (
         <Paper style={{padding: 10, bottom: 10, top: 80, position: 'absolute'}} color="red">
+            <div style={{marginBottom: 10, padding: 10, backgroundColor: theme.palette.background.default}}>
+                <Grid container spacing={2} alignItems="center">
+                    <Grid item>
+                        <TextField
+                            type="date"
+                            label="Jump to Date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            InputLabelProps={{ shrink: true }}
+                        />
+                    </Grid>
+                    <Grid item>
+                        <Button variant="contained" color="primary" onClick={handleGoToDate}>
+                            Go
+                        </Button>
+                    </Grid>
+                </Grid>
+            </div>
             <FullCalendarStyling>
                 <FullCalendar
+                    ref={calendarRef}
                     defaultView="timeGridWeek"
                     rerenderDelay={30}
                     datesRender={(x) => {
-                        const range = {start: moment(x.view.currentStart), end: moment(x.view.currentEnd)};
+                        const range = {
+                            start: moment(x.view.currentStart).format(),
+                            end: moment(x.view.currentEnd).format()
+                        };
+                        console.log('[CalendarPage] datesRender called:', {
+                            viewStart: x.view.currentStart,
+                            viewEnd: x.view.currentEnd,
+                            rangeStart: range.start,
+                            rangeEnd: range.end,
+                            currentVariables: timeSpansResult.variables
+                        });
                         if (
-                            !moment(timeSpansResult.variables.start).isSame(range.start) ||
-                            !moment(timeSpansResult.variables.end).isSame(range.end)
+                            timeSpansResult.variables &&
+                            (timeSpansResult.variables.start !== range.start ||
+                             timeSpansResult.variables.end !== range.end)
                         ) {
+                            console.log('[CalendarPage] Refetching with new range:', range);
                             timeSpansResult.refetch(range);
                         }
                     }}
