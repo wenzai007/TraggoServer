@@ -19,6 +19,12 @@ func (r *ResolverForStatistics) Stats(ctx context.Context, ranges []*gqlmodel.Ra
 }
 
 func (r *ResolverForStatistics) stats(ctx context.Context, ranges []*gqlmodel.Range, tags []string, excludeTags []*gqlmodel.InputTimeSpanTag, requireTags []*gqlmodel.InputTimeSpanTag, now *model.Time) ([]*gqlmodel.RangedStatisticsEntries, error) {
+	// DEBUG: Log the exclude tags
+	fmt.Printf("DEBUG stats(): excludeTags count=%d\n", len(excludeTags))
+	for i, tag := range excludeTags {
+		fmt.Printf("  [%d] key='%s' value='%s'\n", i, tag.Key, tag.Value)
+	}
+
 	if len(ranges) == 0 {
 		return nil, errors.New("ranges may not be empty")
 	}
@@ -33,19 +39,25 @@ func (r *ResolverForStatistics) stats(ctx context.Context, ranges []*gqlmodel.Ra
 	}
 	queryRanges := strings.Join(rangesStrs, ", ")
 
-	queryRequire, requireVars := build(requireTags, "1 = 1")
-	variables = append(variables, requireVars...)
-
-	queryExclude, excludeVars := build(excludeTags, "1 != 1")
-	variables = append(variables, excludeVars...)
-
 	// Use provided 'now' parameter if available, otherwise use datetime('now')
+	// IMPORTANT: Must add now params BEFORE require/exclude params to match SQL template order
 	nowClause := "datetime('now')"
 	if now != nil {
 		nowClause = "?"
 		// The now parameter is used twice in the query, so we need to add it twice
 		variables = append(variables, now.OmitTimeZone(), now.OmitTimeZone())
 	}
+
+	queryRequire, requireVars := build(requireTags, "1 = 1")
+	variables = append(variables, requireVars...)
+
+	queryExclude, excludeVars := build(excludeTags, "1 != 1")
+	variables = append(variables, excludeVars...)
+
+	// DEBUG: Log exclude query and vars
+	fmt.Printf("DEBUG: queryExclude='%s'\n", queryExclude)
+	fmt.Printf("DEBUG: excludeVars=%v\n", excludeVars)
+	fmt.Printf("DEBUG: variables so far (count=%d): %v\n", len(variables), variables)
 
 	query := fmt.Sprintf(`
 WITH dates(query_start, query_end) AS (
