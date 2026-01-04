@@ -7,6 +7,7 @@ import {Tags} from '../gql/__generated__/Tags';
 import useInterval from '@rooks/use-interval';
 import moment from 'moment';
 import {TimeSpans, TimeSpansVariables} from '../gql/__generated__/TimeSpans';
+import {TimeSpansInRange, TimeSpansInRangeVariables} from '../gql/__generated__/TimeSpansInRange';
 import {Typography} from '@material-ui/core';
 import {GroupedTimeSpanProps, toGroupedTimeSpanProps} from './timespanutils';
 import {TagSelectorEntry} from '../tag/tagSelectorEntry';
@@ -15,12 +16,27 @@ import {isSameDate} from '../utils/time';
 
 interface DoneTrackersProps {
     addTagsToTracker?: (entries: TagSelectorEntry[]) => void;
+    startDate?: string;
+    endDate?: string;
 }
 
-export const DoneTrackers: React.FC<DoneTrackersProps> = ({addTagsToTracker}) => {
+export const DoneTrackers: React.FC<DoneTrackersProps> = ({addTagsToTracker, startDate, endDate}) => {
+    const isFiltered = !!(startDate && endDate);
+
     const trackersResult = useQuery<TimeSpans, TimeSpansVariables>(gqlTimeSpan.TimeSpans, {
         variables: {cursor: {pageSize: 30}},
+        skip: isFiltered,
     });
+
+    const trackersRangeResult = useQuery<TimeSpansInRange, TimeSpansInRangeVariables>(gqlTimeSpan.TimeSpansInRange, {
+        variables: {
+            start: startDate || '',
+            end: endDate || ''
+        },
+        skip: !isFiltered,
+    });
+
+    const activeResult = isFiltered ? trackersRangeResult : trackersResult;
     const loading = React.useRef(false);
     const tagsResult = useQuery<Tags>(gqlTag.Tags);
     const [infiniteLoading, setInfiniteLoading] = React.useState(false);
@@ -37,6 +53,9 @@ export const DoneTrackers: React.FC<DoneTrackersProps> = ({addTagsToTracker}) =>
     );
 
     const fetchMore = () => {
+        if (isFiltered) {
+            return; // No pagination for filtered results
+        }
         if (!trackersResult || !trackersResult.data || trackersResult.loading || loading.current) {
             return;
         }
@@ -77,10 +96,10 @@ export const DoneTrackers: React.FC<DoneTrackersProps> = ({addTagsToTracker}) =>
 
     const values: GroupedTimeSpanProps = React.useMemo(() => {
         if (
-            trackersResult.error ||
-            trackersResult.loading ||
-            !trackersResult.data ||
-            trackersResult.data.timeSpans === null ||
+            activeResult.error ||
+            activeResult.loading ||
+            !activeResult.data ||
+            activeResult.data.timeSpans === null ||
             tagsResult.error ||
             tagsResult.loading ||
             !tagsResult.data ||
@@ -88,8 +107,8 @@ export const DoneTrackers: React.FC<DoneTrackersProps> = ({addTagsToTracker}) =>
         ) {
             return [];
         }
-        return toGroupedTimeSpanProps(trackersResult.data.timeSpans.timeSpans, tagsResult.data.tags, currentDate);
-    }, [trackersResult, tagsResult, currentDate]);
+        return toGroupedTimeSpanProps(activeResult.data.timeSpans.timeSpans, tagsResult.data.tags, currentDate);
+    }, [activeResult, tagsResult, currentDate]);
 
     return (
         <div style={{marginTop: 10}}>
