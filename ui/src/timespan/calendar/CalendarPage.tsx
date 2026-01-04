@@ -402,6 +402,10 @@ const getElementContent = (event: EventApi, stop: () => void): string => {
 
     const lines = Math.floor(diff / 15);
     const hasEnd = !event.extendedProps.ts || event.extendedProps.ts.end;
+    const hasNote = event.extendedProps.ts && event.extendedProps.ts.note && event.extendedProps.ts.note.trim() !== '';
+
+    // Note indicator badge (orange dot on right edge, vertically centered)
+    const noteBadge = hasNote ? '<span style="position: absolute; top: 50%; right: 2px; transform: translateY(-50%); width: 8px; height: 8px; background-color: #FF9800; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,0.3);" title="Has notes"></span>' : '';
 
     let stopButton = '';
     if (!hasEnd) {
@@ -426,17 +430,17 @@ const getElementContent = (event: EventApi, stop: () => void): string => {
     const running = hasEnd ? `<span style="float: right">${timeRunningCalendar(start, end)}</span>` : '';
     const date = `${start.format('LT')} - ${hasEnd ? end.format('LT') : 'now'} ${running}`;
     if (lines < 2) {
-        return event.title
+        return noteBadge + (event.title
             ? `<span class="ellipsis-single" title="${event.title}">${event.title}</span>${stopButton}`
-            : `${date}${stopButton}`;
+            : `${date}${stopButton}`);
     }
     if (lines === 2) {
         if (hasEnd) {
-            return `${date}<span class="ellipsis-single" title="${event.title}">${event.title}</span>${stopButton}`;
+            return `${noteBadge}${date}<span class="ellipsis-single" title="${event.title}">${event.title}</span>${stopButton}`;
         } else {
-            return `${clamp(2)}${stopButton}`;
+            return `${noteBadge}${clamp(2)}${stopButton}`;
         }
     }
 
-    return `${date}<br/>${clamp(lines - 1)}${stopButton}`;
+    return `${noteBadge}${date}<br/>${clamp(lines - 1)}${stopButton}`;
 };
