@@ -12,6 +12,7 @@ import {Fade} from '../../common/Fade';
 import {DashboardEntryForm, isValidDashboardEntry} from './DashboardEntryForm';
 import {handleError} from '../../utils/errors';
 import {useSnackbar} from 'notistack';
+import {toRFC3339} from '../../utils/time';
 
 interface EditPopupProps {
     entry: Dashboards_dashboards_items;
@@ -76,8 +77,8 @@ export const EditPopup: React.FC<EditPopupProps> = ({entry, anchorEl, onChange: 
                                                 interval: entry.statsSelection.interval,
                                                 range: entry.statsSelection.range
                                                     ? {
-                                                          from: entry.statsSelection.range.from,
-                                                          to: entry.statsSelection.range.to,
+                                                          from: toRFC3339(entry.statsSelection.range.from),
+                                                          to: toRFC3339(entry.statsSelection.range.to),
                                                       }
                                                     : null,
                                                 rangeId: entry.statsSelection.rangeId,
