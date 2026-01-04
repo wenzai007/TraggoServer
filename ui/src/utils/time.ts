@@ -130,13 +130,54 @@ const isUnit = (char: string): char is Unit => {
 };
 
 export const isValidDate = (value: string, format?: string) => {
+    // Try RFC3339 format first (for backend compatibility)
+    if (moment(value, moment.RFC_2822, true).isValid()) {
+        return true;
+    }
+    if (moment(value, moment.ISO_8601, true).isValid()) {
+        return true;
+    }
+    // Try the custom format
     return asDate(value, format).isValid();
 };
 
 export const asDate = (value: string, format = 'YYYY-MM-DD HH:mm') => {
+    // Try RFC3339/ISO8601 first
+    const isoDate = moment(value, moment.ISO_8601, true);
+    if (isoDate.isValid()) {
+        return isoDate;
+    }
+    // Fall back to custom format
     return moment(value, format, true);
 };
 export const isSameDate = (from: moment.Moment, to?: moment.Moment): boolean => {
     const fromString = from.format('YYYYMMDD');
     return to === undefined || fromString === to.format('YYYYMMDD');
+};
+
+// Convert any valid date string to RFC3339 format for backend
+// IMPORTANT: Backend uses OmitTimeZone() which keeps time components but strips timezone
+// To match this behavior, we format with UTC timezone but keep local time components
+export const toRFC3339 = (value: string): string => {
+    // If it starts with "now", return as-is (relative time)
+    if (value.startsWith('now')) {
+        return value;
+    }
+
+    // If it's already in ISO 8601 format, strip timezone like backend does
+    if (moment(value, moment.ISO_8601, true).isValid()) {
+        const date = moment(value, moment.ISO_8601, true);
+        // Keep the time components but format as UTC (matching backend's OmitTimeZone behavior)
+        return moment.utc([date.year(), date.month(), date.date(), date.hour(), date.minute(), date.second()]).format();
+    }
+
+    // Try to parse the date with custom format
+    const date = asDate(value);
+    if (date.isValid()) {
+        // Keep the time components but format as UTC (matching backend's OmitTimeZone behavior)
+        return moment.utc([date.year(), date.month(), date.date(), date.hour(), date.minute(), date.second()]).format();
+    }
+
+    // If invalid, return as-is and let backend handle the error
+    return value;
 };

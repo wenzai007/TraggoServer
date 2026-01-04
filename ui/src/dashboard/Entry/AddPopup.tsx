@@ -12,6 +12,7 @@ import {DashboardEntryForm, isValidDashboardEntry} from './DashboardEntryForm';
 import {AddDashboardEntry, AddDashboardEntryVariables} from '../../gql/__generated__/AddDashboardEntry';
 import {handleError} from '../../utils/errors';
 import {useSnackbar} from 'notistack';
+import {toRFC3339} from '../../utils/time';
 
 interface EditPopupProps {
     dashboardId: number;
@@ -90,8 +91,8 @@ export const AddPopup: React.FC<EditPopupProps> = ({
                                                 interval: entry.statsSelection.interval,
                                                 range: entry.statsSelection.range
                                                     ? {
-                                                          from: entry.statsSelection.range.from,
-                                                          to: entry.statsSelection.range.to,
+                                                          from: toRFC3339(entry.statsSelection.range.from),
+                                                          to: toRFC3339(entry.statsSelection.range.to),
                                                       }
                                                     : null,
                                                 rangeId: entry.statsSelection.rangeId,
