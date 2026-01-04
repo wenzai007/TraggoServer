@@ -20,6 +20,7 @@ type Dashboard struct {
 	ID      int `gorm:"primary_key;unique_index;AUTO_INCREMENT"`
 	UserID  int `gorm:"type:int REFERENCES users(id) ON DELETE CASCADE"`
 	Name    string
+	Order   int `gorm:"default:0"`
 	Entries []DashboardEntry
 	Ranges  []DashboardRange
 }

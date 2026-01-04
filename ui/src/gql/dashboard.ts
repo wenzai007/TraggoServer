@@ -159,3 +159,9 @@ export const AddDashboardRange = gql`
         }
     }
 `;
+
+export const ReorderDashboard = gql`
+    mutation ReorderDashboard($id: Int!, $moveUp: Boolean!) {
+        reorderDashboard(id: $id, moveUp: $moveUp)
+    }
+`;
