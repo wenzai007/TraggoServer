@@ -249,8 +249,8 @@ export const CalendarPage: React.FC = () => {
     };
 
     return (
-        <Paper style={{padding: 10, bottom: 10, top: 80, position: 'absolute'}} color="red">
-            <div style={{marginBottom: 10, padding: 10, backgroundColor: theme.palette.background.default}}>
+        <Paper style={{padding: 10, bottom: 10, top: 80, position: 'absolute', display: 'flex', flexDirection: 'column'}} color="red">
+            <div style={{padding: 10, backgroundColor: theme.palette.background.default, marginBottom: 10, flexShrink: 0}}>
                 <Grid container spacing={2} alignItems="center">
                     <Grid item>
                         <TextField
@@ -268,6 +268,7 @@ export const CalendarPage: React.FC = () => {
                     </Grid>
                 </Grid>
             </div>
+            <div style={{flex: 1, overflow: 'hidden'}}>
             <FullCalendarStyling>
                 <FullCalendar
                     ref={calendarRef}
@@ -278,19 +279,11 @@ export const CalendarPage: React.FC = () => {
                             start: moment(x.view.currentStart).format(),
                             end: moment(x.view.currentEnd).format()
                         };
-                        console.log('[CalendarPage] datesRender called:', {
-                            viewStart: x.view.currentStart,
-                            viewEnd: x.view.currentEnd,
-                            rangeStart: range.start,
-                            rangeEnd: range.end,
-                            currentVariables: timeSpansResult.variables
-                        });
                         if (
                             timeSpansResult.variables &&
                             (timeSpansResult.variables.start !== range.start ||
                              timeSpansResult.variables.end !== range.end)
                         ) {
-                            console.log('[CalendarPage] Refetching with new range:', range);
                             timeSpansResult.refetch(range);
                         }
                     }}
@@ -389,6 +382,7 @@ export const CalendarPage: React.FC = () => {
                     </ClickAwayListener>
                 </Popper>
             )}
+            </div>
         </Paper>
     );
 };
