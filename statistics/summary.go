@@ -19,12 +19,6 @@ func (r *ResolverForStatistics) Stats(ctx context.Context, ranges []*gqlmodel.Ra
 }
 
 func (r *ResolverForStatistics) stats(ctx context.Context, ranges []*gqlmodel.Range, tags []string, excludeTags []*gqlmodel.InputTimeSpanTag, requireTags []*gqlmodel.InputTimeSpanTag, now *model.Time) ([]*gqlmodel.RangedStatisticsEntries, error) {
-	// DEBUG: Log the exclude tags
-	fmt.Printf("DEBUG stats(): excludeTags count=%d\n", len(excludeTags))
-	for i, tag := range excludeTags {
-		fmt.Printf("  [%d] key='%s' value='%s'\n", i, tag.Key, tag.Value)
-	}
-
 	if len(ranges) == 0 {
 		return nil, errors.New("ranges may not be empty")
 	}
@@ -53,11 +47,6 @@ func (r *ResolverForStatistics) stats(ctx context.Context, ranges []*gqlmodel.Ra
 
 	queryExclude, excludeVars := build(excludeTags, "1 != 1")
 	variables = append(variables, excludeVars...)
-
-	// DEBUG: Log exclude query and vars
-	fmt.Printf("DEBUG: queryExclude='%s'\n", queryExclude)
-	fmt.Printf("DEBUG: excludeVars=%v\n", excludeVars)
-	fmt.Printf("DEBUG: variables so far (count=%d): %v\n", len(variables), variables)
 
 	query := fmt.Sprintf(`
 WITH dates(query_start, query_end) AS (
