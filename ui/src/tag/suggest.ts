@@ -48,20 +48,19 @@ const suggestTag = (
 
     let availableTags = (tagResult.data.tags || [])
         .filter((tag) => allowDuplicateKeys || usedTags.indexOf(tag.key) === -1)
-        .filter((tag) => tag.key.indexOf(tagKey) === 0);
-
-    if (tagKey && !exactMatch && createTags) {
-        availableTags = [specialTag(tagKey, 'new'), ...availableTags];
-    }
+        .filter((tag) => tag.key.indexOf(tagKey) === 0)
+        .sort((a, b) => b.usages - a.usages);
 
     if (usedTags.indexOf(tagKey) !== -1 && !allowDuplicateKeys) {
         availableTags = [specialTag(tagKey, 'used'), ...availableTags];
     }
 
-    return availableTags
-        .sort((a, b) => b.usages - a.usages)
-        .slice(0, 5)
-        .map((tag) => ({tag, value: ''}));
+    // Add "Create tag" option at the END if no exact match
+    if (tagKey && !exactMatch && createTags) {
+        availableTags = [...availableTags, specialTag(tagKey, 'new')];
+    }
+
+    return availableTags.map((tag) => ({tag, value: ''}));
 };
 
 const suggestTagValue = (
