@@ -10,6 +10,7 @@ import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
+import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction';
 import DashboardIcon from '@material-ui/icons/Dashboard';
 import MenuIcon from '@material-ui/icons/Menu';
 import SettingsIcon from '@material-ui/icons/Settings';
@@ -18,6 +19,8 @@ import LabelIcon from '@material-ui/icons/Label';
 import DashboardManageIcon from '@material-ui/icons/ListAlt';
 import TimeLineIcon from '@material-ui/icons/Timeline';
 import CalendarIcon from '@material-ui/icons/CalendarToday';
+import ArrowUpwardIcon from '@material-ui/icons/ArrowUpward';
+import ArrowDownwardIcon from '@material-ui/icons/ArrowDownward';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
 import {ListSubheader, Menu} from '@material-ui/core';
@@ -112,6 +115,15 @@ export const Page: React.FC = ({children}) => {
     );
     const dashboardsQuery = useQuery<Dashboards>(gqlDashboard.Dashboards);
     const dashboards = (dashboardsQuery.data && dashboardsQuery.data.dashboards) || [];
+    const [reorderDashboard] = useMutation(gqlDashboard.ReorderDashboard, {
+        refetchQueries: [{query: gqlDashboard.Dashboards}],
+    });
+
+    const handleReorder = (id: number, moveUp: boolean) => (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        reorderDashboard({variables: {id, moveUp}});
+    };
 
     const username = (data && data.user && data.user.name) || 'unknown';
     const admin = data && data.user && data.user.admin;
@@ -132,12 +144,30 @@ export const Page: React.FC = ({children}) => {
             </div>
             <Divider />
             <List subheader={<ListSubheader>Dashboards</ListSubheader>} dense={true}>
-                {dashboards.map(({id, name}) => (
+                {dashboards.map(({id, name}, index) => (
                     <ListItem key={id} button component={routerLink(`/dashboard/${id}/${encodeURIComponent(name)}`)}>
                         <ListItemIcon>
                             <DashboardIcon />
                         </ListItemIcon>
                         <ListItemText primary={name} />
+                        <ListItemSecondaryAction>
+                            <IconButton
+                                edge="end"
+                                size="small"
+                                disabled={index === 0}
+                                onClick={handleReorder(id, true)}
+                            >
+                                <ArrowUpwardIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                                edge="end"
+                                size="small"
+                                disabled={index === dashboards.length - 1}
+                                onClick={handleReorder(id, false)}
+                            >
+                                <ArrowDownwardIcon fontSize="small" />
+                            </IconButton>
+                        </ListItemSecondaryAction>
                     </ListItem>
                 ))}
                 {dashboards.length === 0 ? (

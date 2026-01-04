@@ -35,6 +35,7 @@ type RootMutation {
     createDashboard(name: String!): Dashboard! @hasRole(role: USER)
     updateDashboard(id: Int!, name: String!): Dashboard! @hasRole(role: USER)
     removeDashboard(id: Int!): Dashboard! @hasRole(role: USER)
+    reorderDashboard(id: Int!, moveUp: Boolean!): Boolean! @hasRole(role: USER)
 
     addDashboardRange(dashboardId: Int!, range: InputNamedDateRange!): NamedDateRange
     updateDashboardRange(rangeId: Int!, range: InputNamedDateRange!): NamedDateRange

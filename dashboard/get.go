@@ -21,7 +21,7 @@ func (r *ResolverForDashboard) Dashboards(ctx context.Context) ([]*gqlmodel.Dash
 	q = q.Preload("Entries.TagFilters")
 	q = q.Preload("Ranges")
 
-	find := q.Where(&model.Dashboard{UserID: userID}).Find(&dashboards)
+	find := q.Where(&model.Dashboard{UserID: userID}).Order("`order` asc, id asc").Find(&dashboards)
 
 	if find.Error != nil {
 		return nil, find.Error
