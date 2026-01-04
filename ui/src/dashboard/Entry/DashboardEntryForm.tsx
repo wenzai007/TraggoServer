@@ -211,17 +211,42 @@ export const DashboardEntryForm: React.FC<EditPopupProps> = ({entry, onChange: s
                     </Grid>
                 </Grid>
             </Typography>
-            <FormTagSelector
-                label="Tags"
-                selectedEntries={tagKeys || []}
-                onSelectedEntriesChanged={(tags) => {
-                    entry.statsSelection.tags = tags.map((tag) => tag.tag.key);
-                    setEntry(entry);
-                }}
-                createTags={false}
-                onlySelectKeys
-                removeWhenClicked
-            />
+            <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                <div style={{flex: 1}}>
+                    <FormTagSelector
+                        label="Tags"
+                        selectedEntries={tagKeys || []}
+                        onSelectedEntriesChanged={(tags) => {
+                            entry.statsSelection.tags = tags.map((tag) => tag.tag.key);
+                            setEntry(entry);
+                        }}
+                        createTags={false}
+                        onlySelectKeys
+                        removeWhenClicked
+                    />
+                </div>
+                <button
+                    type="button"
+                    disabled={disabled}
+                    style={{
+                        padding: '8px 16px',
+                        cursor: disabled ? 'not-allowed' : 'pointer',
+                        backgroundColor: '#1976d2',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '14px',
+                    }}
+                    onClick={() => {
+                        if (tagsResult.data && tagsResult.data.tags) {
+                            const allTags = tagsResult.data.tags.map((tag) => tag.key);
+                            entry.statsSelection.tags = allTags;
+                            setEntry({...entry});
+                        }
+                    }}>
+                    Select All
+                </button>
+            </div>
 
             <FormTagSelector
                 label="Exclude"
