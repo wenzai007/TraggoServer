@@ -28,6 +28,9 @@ func (r *ResolverForTimeSpan) StopTimeSpan(ctx context.Context, id int, end mode
 	r.DB.Where("time_span_id = ?", old.ID).Delete(new(model.TimeSpanTag))
 	r.DB.Save(old)
 
+	// Update recent tags cache
+	updateRecentTags(r.DB, auth.GetUser(ctx).ID, old.Tags, old.StartUTC)
+
 	external := timeSpanToExternal(*old)
 	return external, nil
 }

@@ -21,6 +21,9 @@ func (r *ResolverForTimeSpan) CreateTimeSpan(ctx context.Context, start model.Ti
 
 	r.DB.Create(&timeSpan)
 
+	// Update recent tags cache
+	updateRecentTags(r.DB, auth.GetUser(ctx).ID, timeSpan.Tags, timeSpan.StartUTC)
+
 	external := timeSpanToExternal(timeSpan)
 	return external, nil
 }

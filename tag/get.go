@@ -14,16 +14,12 @@ func (r *ResolverForTag) Tags(ctx context.Context) ([]*gqlmodel.TagDefinition, e
 	var tags []model.TagDefinition
 	userID := auth.GetUser(ctx).ID
 
-	timeSpansIdsOfUser := r.DB.Model(new(model.TimeSpan)).
-		Select("id").
-		Where(&model.TimeSpan{UserID: userID}).
-		SubQuery()
-	usages := r.DB.Select("COUNT (*)").Where("time_span_tags.time_span_id in ?", timeSpansIdsOfUser).
-		Where("tag_definitions.key = time_span_tags.key").
-		Model(new(model.TimeSpanTag)).
-		Group("time_span_tags.key").
-		SubQuery()
-	find := r.DB.Select("tag_definitions.*, ? as usages", usages).Where("user_id = ?", userID).Order("usages desc").Find(&tags)
+	find := r.DB.
+		Select("tag_definitions.*, COALESCE(strftime('%s', user_recent_tags.last_used_at), '0') as usages").
+		Joins("LEFT JOIN user_recent_tags ON tag_definitions.key = user_recent_tags.tag_key AND user_recent_tags.user_id = ?", userID).
+		Where("tag_definitions.user_id = ?", userID).
+		Order("usages desc").
+		Find(&tags)
 	result := []*gqlmodel.TagDefinition{}
 	copier.Copy(&result, &tags)
 	return result, find.Error

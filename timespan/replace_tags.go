@@ -2,6 +2,7 @@ package timespan
 
 import (
 	"context"
+	"time"
 
 	"github.com/traggo/server/auth"
 	"github.com/traggo/server/generated/gqlmodel"
@@ -66,6 +67,11 @@ func (r *ResolverForTimeSpan) ReplaceTimeSpanTags(ctx context.Context, fromExter
 	}
 
 	commit := tx.Commit()
+
+	// Update recent tags cache for the "to" tag after successful replace
+	if commit.Error == nil {
+		updateRecentTags(r.DB, userID, []model.TimeSpanTag{to}, time.Now())
+	}
 
 	return nil, commit.Error
 }
