@@ -31,6 +31,9 @@ func (r *ResolverForTimeSpan) UpdateTimeSpan(ctx context.Context, id int, start 
 	r.DB.Where("time_span_id = ?", timeSpan.ID).Delete(new(model.TimeSpanTag))
 	r.DB.Save(&timeSpan)
 
+	// Update recent tags cache
+	updateRecentTags(r.DB, auth.GetUser(ctx).ID, timeSpan.Tags, timeSpan.StartUTC)
+
 	external := timeSpanToExternal(timeSpan)
 	if oldStart == nil {
 		location := time.FixedZone("unknown", oldTimeSpan.OffsetUTC)
