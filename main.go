@@ -4,6 +4,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	"github.com/rs/zerolog"
@@ -70,6 +71,7 @@ func initRouter(db *gorm.DB, conf config.Config, version model.Version) *mux.Rou
 		graphql.NewDirective())
 
 	router := mux.NewRouter()
+	router.Use(handlers.CompressHandler) // Enable gzip compression for all responses
 	router.Use(auth.Middleware(db))
 	router.HandleFunc("/graphql", gqlHandler)
 	ui.Register(router)
