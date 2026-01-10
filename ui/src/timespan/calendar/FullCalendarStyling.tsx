@@ -52,13 +52,23 @@ const useStyle = makeStyles((theme) => {
             '& .fc-time-grid-event.fc-v-event.fc-event': {
                 borderRadius: 8,
                 border: 'none',
-                padding: 5,
+                padding: 0,
                 opacity: 0.65,
                 left: '0 !important',
                 right: '0 !important',
                 width: '100% !important',
                 marginLeft: '0 !important',
                 marginRight: '0 !important',
+                boxSizing: 'border-box !important',
+            },
+            '& .fc-event-container': {
+                margin: '0 !important',
+                padding: '0 !important',
+                left: '0 !important',
+                right: '0 !important',
+            },
+            '& .fc-time-grid-container .fc-event-container': {
+                margin: '0 3px !important',
             },
             '& .fc .fc-time-grid-event': {
                 minHeight: 1,
@@ -90,17 +100,17 @@ const useStyle = makeStyles((theme) => {
                 padding: '0 !important',
                 verticalAlign: 'top !important',
             },
+            '& .fc-time-grid .fc-day': {
+                borderStyle: 'solid !important',
+                borderColor: theme.palette.type === 'dark' ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.1)',
+                borderWidth: '0 0 0 1px !important',
+            },
+            '& .fc-time-grid .fc-day:first-child': {
+                borderLeft: '0 !important',
+            },
             '& .fc td': {
                 borderStyle: 'solid !important',
-                borderColor: theme.palette.type === 'dark' ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.1)',
-                borderWidth: '0 1px 0 0 !important',
-                padding: '0 !important',
-                verticalAlign: 'top !important',
-            },
-            '& .fc tr:nth-child(4n+2)': {
-                borderStyle: 'solid !important',
-                borderColor: theme.palette.type === 'dark' ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.1)',
-                borderWidth: '0 0 1px 0 !important',
+                borderWidth: '0 !important',
                 padding: '0 !important',
                 verticalAlign: 'top !important',
             },
