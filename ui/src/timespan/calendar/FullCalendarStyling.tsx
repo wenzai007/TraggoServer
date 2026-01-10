@@ -1,9 +1,14 @@
 import * as React from 'react';
 import {makeStyles} from '@material-ui/core';
 
+interface FullCalendarStylingProps {
+    slotHeight?: number;
+    children?: React.ReactNode;
+}
+
 const useStyle = makeStyles((theme) => {
     return {
-        root: {
+        root: (props: FullCalendarStylingProps) => ({
             height: '100%',
             width: '100%',
             // '& .fc-time-grid-event': {
@@ -45,19 +50,25 @@ const useStyle = makeStyles((theme) => {
                 },
             },
             '& .fc-time-grid-event.fc-v-event.fc-event': {
-                borderRadius: 1,
+                borderRadius: 8,
                 border: 'none',
                 padding: 5,
                 opacity: 0.65,
-                left: '5% !important',
-                right: '5% !important',
+                left: '0 !important',
+                right: '0 !important',
+                width: '100% !important',
+                marginLeft: '0 !important',
+                marginRight: '0 !important',
             },
             '& .fc .fc-time-grid-event': {
                 minHeight: 1,
             },
+            '& .fc-time-grid .fc-slats td': {
+                height: props.slotHeight || 42,
+            },
             '& .fc-event': {
                 fontSize: 'inherit !important',
-                borderRadius: 1,
+                borderRadius: 8,
             },
             '& .fc td, .fc th': {
                 borderStyle: 'solid !important',
@@ -178,6 +189,11 @@ const useStyle = makeStyles((theme) => {
             },
             '& .fc .fc-content': {
                 height: '100%',
+                textAlign: 'center',
+                paddingTop: '8px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'center',
             },
             '& .fc .fc-content .stop': {
                 background: theme.palette.type === 'dark' ? 'rgba(255,255,255,.2) !important' : 'rgba(0,0,0,.1) !important',
@@ -205,13 +221,15 @@ const useStyle = makeStyles((theme) => {
                 display: '-webkit-box',
                 boxOrient: 'vertical',
                 overflow: 'hidden',
+                textAlign: 'center',
             },
             '& .fc .ellipsis-single': {
                 textOverflow: 'ellipsis',
-                display: 'inline-block',
+                display: 'block',
                 width: '100%',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
+                textAlign: 'center',
             },
             '& .fc .__start': {
                 background: theme.palette.primary.main,
@@ -226,11 +244,11 @@ const useStyle = makeStyles((theme) => {
                 background: theme.palette.primary.light,
             },
             // tslint:disable-next-line:no-any important breaks it
-        } as any,
+        } as any),
     };
 });
 
-export const FullCalendarStyling: React.FC = ({children}) => {
-    const classes = useStyle();
+export const FullCalendarStyling: React.FC<FullCalendarStylingProps> = ({children, slotHeight = 42}) => {
+    const classes = useStyle({slotHeight});
     return <div className={classes.root}>{children}</div>;
 };
