@@ -1,5 +1,6 @@
 import * as React from 'react';
-import {Paper, useTheme, Button, Grid, TextField} from '@material-ui/core';
+import {Paper, useTheme, Button, TextField, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, Checkbox, Badge} from '@material-ui/core';
+import {ZoomIn, ZoomOut, FilterList, ChevronLeft, ChevronRight} from '@material-ui/icons';
 import moment from 'moment';
 import {useApolloClient, useMutation, useQuery} from '@apollo/react-hooks';
 import {TimeSpans_timeSpans_timeSpans} from '../../gql/__generated__/TimeSpans';
@@ -57,6 +58,11 @@ export const CalendarPage: React.FC = () => {
     const theme = useTheme();
     const calendarRef = React.useRef<FullCalendar>(null);
     const [selectedDate, setSelectedDate] = React.useState<string>(moment().format('YYYY-MM-DD'));
+    const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
+    const [tempSelectedTags, setTempSelectedTags] = React.useState<string[]>([]);
+    const [zoomLevel, setZoomLevel] = React.useState<number>(1);
+    const [filterDialogOpen, setFilterDialogOpen] = React.useState<boolean>(false);
+    const [tagSearchText, setTagSearchText] = React.useState<string>('');
 
     const timeSpansResult = useQuery<TimeSpansInRange, TimeSpansInRangeVariables>(gqlTimeSpan.TimeSpansInRange, {
         variables: {
@@ -135,10 +141,18 @@ export const CalendarPage: React.FC = () => {
             tagColorMap.set(tag.key, tag.color);
         });
 
-        return timeSpansResult.data.timeSpans.timeSpans
+        const allEvents = timeSpansResult.data.timeSpans.timeSpans
             .concat(trackersResult.data.timers)
-            .sort((a, b) => a.start.toString().localeCompare(b.start.toString()))
-            .map((ts) => {
+            .sort((a, b) => a.start.toString().localeCompare(b.start.toString()));
+
+        // Filter by selected tags if any
+        const filteredEvents = selectedTags.length > 0
+            ? allEvents.filter(ts =>
+                ts.tags && ts.tags.some(tag => selectedTags.includes(tag.key + ':' + tag.value))
+              )
+            : allEvents;
+
+        return filteredEvents.map((ts) => {
                 // Use the first tag's color from the database, or fall back to calculated color
                 let color: string;
                 let borderColor: string;
@@ -165,9 +179,19 @@ export const CalendarPage: React.FC = () => {
                     borderColor = theme.palette.grey[700];
                 }
 
+                const startMoment = moment(ts.start);
+                const endMoment = moment(ts.end || currentDate);
+
+                // Fix overlapping: if end time is within the same minute as start time,
+                // add 1 minute to the end time for display purposes
+                let displayEnd = endMoment;
+                if (ts.end && startMoment.format('YYYY-MM-DD HH:mm') === endMoment.format('YYYY-MM-DD HH:mm')) {
+                    displayEnd = moment(endMoment).add(1, 'minute');
+                }
+
                 return {
-                    start: moment(ts.start).toDate(),
-                    end: moment(ts.end || currentDate).toDate(),
+                    start: startMoment.toDate(),
+                    end: displayEnd.toDate(),
                     hasEnd: !!ts.end,
                     editable: !!ts.end,
                     backgroundColor: color,
@@ -248,28 +272,117 @@ export const CalendarPage: React.FC = () => {
         }
     };
 
+    const handlePrev = () => {
+        const calendarApi = calendarRef.current && calendarRef.current.getApi();
+        if (calendarApi) {
+            calendarApi.prev();
+        }
+    };
+
+    const handleNext = () => {
+        const calendarApi = calendarRef.current && calendarRef.current.getApi();
+        if (calendarApi) {
+            calendarApi.next();
+        }
+    };
+
+    const handleToday = () => {
+        const calendarApi = calendarRef.current && calendarRef.current.getApi();
+        if (calendarApi) {
+            calendarApi.today();
+        }
+    };
+
+    // Get all unique tags from the data
+    const allTags = React.useMemo(() => {
+        if (!timeSpansResult.data || !timeSpansResult.data.timeSpans) {
+            return [];
+        }
+        const tagSet = new Set<string>();
+        timeSpansResult.data.timeSpans.timeSpans.forEach(ts => {
+            if (ts.tags) {
+                ts.tags.forEach(tag => {
+                    tagSet.add(tag.key + ':' + tag.value);
+                });
+            }
+        });
+        return Array.from(tagSet).sort();
+    }, [timeSpansResult.data]);
+
+    // Filter tags based on search text
+    const filteredTags = React.useMemo(() => {
+        if (!tagSearchText) return allTags;
+        return allTags.filter(tag => tag.toLowerCase().includes(tagSearchText.toLowerCase()));
+    }, [allTags, tagSearchText]);
+
+    const handleOpenFilterDialog = () => {
+        setTempSelectedTags(selectedTags);
+        setTagSearchText('');
+        setFilterDialogOpen(true);
+    };
+
+    const handleApplyFilter = () => {
+        setSelectedTags(tempSelectedTags);
+        setFilterDialogOpen(false);
+    };
+
+    const handleClearAllTags = () => {
+        setTempSelectedTags([]);
+    };
+
+    const handleToggleTag = (tag: string) => {
+        setTempSelectedTags(prev =>
+            prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+        );
+    };
+
+    const handleZoomIn = () => {
+        setZoomLevel(prev => Math.min(prev + 0.25, 2));
+    };
+
+    const handleZoomOut = () => {
+        setZoomLevel(prev => Math.max(prev - 0.25, 0.75));
+    };
+
+    const slotHeight = 21 * zoomLevel;  // Original default was 21px per 15-min slot
+
     return (
-        <Paper style={{padding: 10, bottom: 10, top: 80, position: 'absolute', display: 'flex', flexDirection: 'column'}} color="red">
-            <div style={{padding: 10, backgroundColor: theme.palette.background.default, marginBottom: 10, flexShrink: 0}}>
-                <Grid container spacing={2} alignItems="center">
-                    <Grid item>
-                        <TextField
-                            type="date"
-                            label="Jump to Date"
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            InputLabelProps={{ shrink: true }}
-                        />
-                    </Grid>
-                    <Grid item>
-                        <Button variant="contained" color="primary" onClick={handleGoToDate}>
-                            Go
-                        </Button>
-                    </Grid>
-                </Grid>
+        <Paper style={{padding: 5, bottom: 10, top: 80, position: 'absolute', display: 'flex', flexDirection: 'column'}} color="red">
+            <div style={{padding: '4px 6px', backgroundColor: theme.palette.background.default, marginBottom: 5, flexShrink: 0, borderRadius: 4, display: 'flex', alignItems: 'center', flexWrap: 'nowrap'}}>
+                <IconButton size="small" onClick={handlePrev} title="Previous" style={{padding: 6, marginRight: 2}}>
+                    <ChevronLeft fontSize="small" />
+                </IconButton>
+                <IconButton size="small" onClick={handleNext} title="Next" style={{padding: 6, marginRight: 8}}>
+                    <ChevronRight fontSize="small" />
+                </IconButton>
+                <Button size="small" onClick={handleToday} style={{minWidth: 45, padding: '4px 8px', fontSize: '0.75rem', marginRight: 8}}>
+                    Today
+                </Button>
+                <TextField
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    style={{width: 130, marginRight: 4}}
+                    inputProps={{style: {padding: '6px 8px', fontSize: '0.85rem'}}}
+                />
+                <Button size="small" variant="contained" color="primary" onClick={handleGoToDate} style={{minWidth: 35, padding: '4px 10px', fontSize: '0.75rem', marginRight: 'auto'}}>
+                    Go
+                </Button>
+                <Badge badgeContent={selectedTags.length} color="secondary" style={{marginRight: 4}}>
+                    <IconButton size="small" onClick={handleOpenFilterDialog} title="Filter" style={{padding: 6}}>
+                        <FilterList fontSize="small" />
+                    </IconButton>
+                </Badge>
+                <IconButton size="small" onClick={handleZoomOut} disabled={zoomLevel <= 0.75} title="Zoom Out" style={{padding: 6, marginRight: 2}}>
+                    <ZoomOut fontSize="small" />
+                </IconButton>
+                <IconButton size="small" onClick={handleZoomIn} disabled={zoomLevel >= 2} title="Zoom In" style={{padding: 6}}>
+                    <ZoomIn fontSize="small" />
+                </IconButton>
             </div>
             <div style={{flex: 1, overflow: 'hidden'}}>
-            <FullCalendarStyling>
+            <FullCalendarStyling slotHeight={slotHeight}>
                 <FullCalendar
                     ref={calendarRef}
                     defaultView="timeGridWeek"
@@ -297,6 +410,7 @@ export const CalendarPage: React.FC = () => {
                     }}
                     editable={true}
                     events={values}
+                    slotEventOverlap={false}
                     allDaySlot={false}
                     selectable={true}
                     selectMirror={true}
@@ -329,11 +443,7 @@ export const CalendarPage: React.FC = () => {
                     columnHeaderFormat={(s) => toMoment(s.start.marker).format('DD ddd')}
                     nowIndicator={true}
                     plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, momentPlugin]}
-                    header={{
-                        center: 'title',
-                        left: 'prev,next today',
-                        right: 'timeGridWeek,timeGrid5Day,timeGridDay',
-                    }}
+                    header={false}
                 />
             </FullCalendarStyling>
             {!!selected.selected && (
@@ -382,6 +492,47 @@ export const CalendarPage: React.FC = () => {
                     </ClickAwayListener>
                 </Popper>
             )}
+
+            {/* Tag Filter Dialog */}
+            <Dialog open={filterDialogOpen} onClose={() => setFilterDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Filter by Tags</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        label="Search tags"
+                        value={tagSearchText}
+                        onChange={(e) => setTagSearchText(e.target.value)}
+                        fullWidth
+                        margin="normal"
+                        autoFocus
+                    />
+                    <div style={{ maxHeight: 400, overflow: 'auto' }}>
+                        <List>
+                            {filteredTags.map((tag) => (
+                                <ListItem key={tag} button onClick={() => handleToggleTag(tag)} dense>
+                                    <Checkbox
+                                        edge="start"
+                                        checked={tempSelectedTags.includes(tag)}
+                                        tabIndex={-1}
+                                        disableRipple
+                                    />
+                                    <ListItemText primary={tag} />
+                                </ListItem>
+                            ))}
+                        </List>
+                    </div>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleClearAllTags} color="default">
+                        Clear All
+                    </Button>
+                    <Button onClick={() => setFilterDialogOpen(false)} color="default">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleApplyFilter} color="primary" variant="contained">
+                        Apply
+                    </Button>
+                </DialogActions>
+            </Dialog>
             </div>
         </Paper>
     );
@@ -424,23 +575,32 @@ const getElementContent = (event: EventApi, stop: () => void): string => {
             end
         )}</a></div>`;
     }
+
+    // Extract only the suffix (value) part of tags
+    const tagSuffixes = event.extendedProps.ts && event.extendedProps.ts.tags
+        ? event.extendedProps.ts.tags.map((tag: any) => tag.value).join(' ')
+        : event.title || '';
+
     const clamp = (amount: number) =>
-        `<span class="ellipsis" title="${event.title}" style="-webkit-line-clamp: ${amount}">${event.title}</span>`;
+        `<span class="ellipsis" title="${event.title}" style="-webkit-line-clamp: ${amount}">${tagSuffixes}</span>`;
 
-    const running = hasEnd ? `<span style="float: right">${timeRunningCalendar(start, end)}</span>` : '';
-    const date = `${start.format('LT')} - ${hasEnd ? end.format('LT') : 'now'} ${running}`;
+    // For very small entries (less than 15 minutes), show only color - no text
+    if (diff < 15) {
+        return noteBadge + stopButton;
+    }
+
+    // For small entries (less than 2 lines worth), show only tag suffixes
     if (lines < 2) {
-        return noteBadge + (event.title
-            ? `<span class="ellipsis-single" title="${event.title}">${event.title}</span>${stopButton}`
-            : `${date}${stopButton}`);
-    }
-    if (lines === 2) {
-        if (hasEnd) {
-            return `${noteBadge}${date}<span class="ellipsis-single" title="${event.title}">${event.title}</span>${stopButton}`;
-        } else {
-            return `${noteBadge}${clamp(2)}${stopButton}`;
-        }
+        return noteBadge + (tagSuffixes
+            ? `<span class="ellipsis-single" title="${event.title}">${tagSuffixes}</span>${stopButton}`
+            : stopButton);
     }
 
-    return `${noteBadge}${date}<br/>${clamp(lines - 1)}${stopButton}`;
+    // For medium entries (2 lines), show tag suffixes
+    if (lines === 2) {
+        return `${noteBadge}<span class="ellipsis-single" title="${event.title}">${tagSuffixes}</span>${stopButton}`;
+    }
+
+    // For larger entries, show tag suffixes on multiple lines
+    return `${noteBadge}${clamp(lines - 1)}${stopButton}`;
 };
