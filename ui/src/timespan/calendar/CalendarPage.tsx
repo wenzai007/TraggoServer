@@ -687,7 +687,6 @@ const getElementContent = (event: EventApi, stop: () => void): string => {
     const end = moment(event.end);
     const diff = end.diff(start, 'minute');
 
-    const lines = Math.floor(diff / 15);
     const hasEnd = !event.extendedProps.ts || event.extendedProps.ts.end;
     const hasNote = event.extendedProps.ts && event.extendedProps.ts.note && event.extendedProps.ts.note.trim() !== '';
 
@@ -717,26 +716,12 @@ const getElementContent = (event: EventApi, stop: () => void): string => {
         ? event.extendedProps.ts.tags.map((tag: any) => tag.value).join(' ')
         : event.title || '';
 
-    const clamp = (amount: number) =>
-        `<span class="ellipsis" title="${event.title}" style="-webkit-line-clamp: ${amount}">${tagSuffixes}</span>`;
-
     // For very small entries (less than 15 minutes), show only color - no text
     if (diff < 15) {
         return noteBadge + stopButton;
     }
 
-    // For small entries (less than 2 lines worth), show only tag suffixes
-    if (lines < 2) {
-        return noteBadge + (tagSuffixes
-            ? `<span class="ellipsis-single" title="${event.title}">${tagSuffixes}</span>${stopButton}`
-            : stopButton);
-    }
-
-    // For medium entries (2 lines), show tag suffixes
-    if (lines === 2) {
-        return `${noteBadge}<span class="ellipsis-single" title="${event.title}">${tagSuffixes}</span>${stopButton}`;
-    }
-
-    // For larger entries, show tag suffixes on multiple lines
-    return `${noteBadge}${clamp(lines - 1)}${stopButton}`;
+    // For all other entries, show text with natural wrapping
+    // The text will automatically wrap to multiple lines based on the container height
+    return `${noteBadge}<span class="ellipsis-single" title="${event.title}">${tagSuffixes}</span>${stopButton}`;
 };

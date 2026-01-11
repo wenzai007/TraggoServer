@@ -44,40 +44,49 @@ Write-Host "Found file: $tarFileName" -ForegroundColor Green
 # Step 4: SCP the file to Ubuntu
 Write-Host "`n[Step 4/4] Deploying to Ubuntu server (20.6.8.1)..." -ForegroundColor Yellow
 
-# Using pscp (PuTTY's SCP) - make sure it's installed
-# Alternative: Use WinSCP or install OpenSSH on Windows
+# Read password from config.txt file (add config.txt to .gitignore)
+$passwordOfUbuntu = (Get-Content "C:\Users\wenzzha\Downloads\PassForUbuntuNothingSpecial\pass.txt" -Raw).Trim()
 
-# Check if pscp is available
-$pscpPath = Get-Command pscp -ErrorAction SilentlyContinue
+# Initialize transfer success flag
+$transferSuccess = $false
 
-if ($pscpPath) {
-    # Using pscp
-    Write-Host "Using pscp to transfer file..." -ForegroundColor Cyan
-    echo y | pscp -pw Zwz@ms6165311 "$tarFilePath" bigstep@20.6.8.1:~/$tarFileName
-} else {
-    # Try using scp (if OpenSSH is installed on Windows)
-    $scpPath = Get-Command scp -ErrorAction SilentlyContinue
-    
-    if ($scpPath) {
-        Write-Host "Using scp to transfer file..." -ForegroundColor Cyan
-        # Note: scp will prompt for password interactively
-        scp "$tarFilePath" bigstep@20.6.8.1:~/$tarFileName
-    } else {
-        Write-Host "Error: Neither pscp nor scp found!" -ForegroundColor Red
-        Write-Host "Please install one of the following:" -ForegroundColor Yellow
-        Write-Host "  - PuTTY (for pscp): https://www.putty.org/" -ForegroundColor Yellow
-        Write-Host "  - OpenSSH Client (Windows feature)" -ForegroundColor Yellow
-        Write-Host "`nManually copy this file to Ubuntu:" -ForegroundColor Yellow
-        Write-Host "  File: $tarFilePath" -ForegroundColor Cyan
-        Write-Host "  Destination: bigstep@20.6.8.1:~/" -ForegroundColor Cyan
+# Check if Posh-SSH is available, install if not
+if (-not (Get-Module -ListAvailable -Name Posh-SSH)) {
+    Write-Host "Posh-SSH module not found. Installing..." -ForegroundColor Yellow
+    try {
+        Install-Module -Name Posh-SSH -Force -Scope CurrentUser -ErrorAction Stop
+        Write-Host "Posh-SSH installed successfully!" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "Error: Could not install Posh-SSH: $_" -ForegroundColor Red
         exit 1
     }
 }
 
-if ($LASTEXITCODE -eq 0) {
+# Use Posh-SSH for transfer
+Write-Host "Using Posh-SSH module for automated transfer..." -ForegroundColor Cyan
+Import-Module Posh-SSH
+
+$password = ConvertTo-SecureString $passwordOfUbuntu -AsPlainText -Force
+$credential = New-Object System.Management.Automation.PSCredential ("bigstep", $password)
+
+try {
+    # -AcceptKey automatically accepts the SSH host key
+    Set-SCPItem -ComputerName "20.6.8.1" -Credential $credential -Path "$tarFilePath" -Destination "/home/bigstep/" -AcceptKey -ErrorAction Stop
+    Write-Host "File transferred successfully!" -ForegroundColor Green
+    $transferSuccess = $true
+}
+catch {
+    Write-Host "Posh-SSH transfer failed: $_" -ForegroundColor Red
+    Write-Host "Error details: $($_.Exception.Message)" -ForegroundColor Red
+    $transferSuccess = $false
+    exit 1
+}
+
+if ($transferSuccess) {
     Write-Host "`n=== Deployment completed successfully! ===" -ForegroundColor Green
     Write-Host "File deployed: $tarFileName" -ForegroundColor Cyan
-    Write-Host "Destination: bigstep@20.6.8.1:~/" -ForegroundColor Cyan
+    Write-Host "Destination: bigstep@20.6.8.1:/home/bigstep/" -ForegroundColor Cyan
 } else {
     Write-Host "`nError: File transfer failed!" -ForegroundColor Red
     exit 1
