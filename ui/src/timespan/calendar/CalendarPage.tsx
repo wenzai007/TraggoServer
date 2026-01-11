@@ -582,7 +582,6 @@ export const CalendarPage: React.FC = () => {
                         onChange={(e) => setTagSearchText(e.target.value)}
                         fullWidth
                         margin="normal"
-                        autoFocus
                     />
                     <div style={{ maxHeight: 400, overflow: 'auto' }}>
                         <List>
