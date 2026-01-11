@@ -281,16 +281,16 @@ export const CalendarPage: React.FC = () => {
         const start = moment(data.date);
         const end = moment(data.date).add(15, 'minutes');
 
-        // Get the click position relative to the viewport
-        const rect = data.jsEvent.target instanceof Element
-            ? (data.jsEvent.target as Element).getBoundingClientRect()
-            : {left: data.jsEvent.clientX, top: data.jsEvent.clientY};
+        // Get the accurate tap/click position
+        // Use clientX/Y for the actual pointer position
+        const x = data.jsEvent.clientX;
+        const y = data.jsEvent.clientY;
 
         setPendingEntry({
             start,
             end,
-            x: data.jsEvent.clientX || rect.left,
-            y: data.jsEvent.clientY || rect.top
+            x,
+            y
         });
     };
 
