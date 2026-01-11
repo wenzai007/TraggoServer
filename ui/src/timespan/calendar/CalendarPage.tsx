@@ -67,6 +67,7 @@ export const CalendarPage: React.FC = () => {
     const [tagSearchText, setTagSearchText] = React.useState<string>('');
     const [expandedKeys, setExpandedKeys] = React.useState<Set<string>>(new Set());
     const [tagValuesCache, setTagValuesCache] = React.useState<Map<string, string[]>>(new Map());
+    const [pendingEntry, setPendingEntry] = React.useState<{start: moment.Moment; end: moment.Moment; x: number; y: number} | null>(null);
 
     const timeSpansResult = useQuery<TimeSpansInRange, TimeSpansInRangeVariables>(gqlTimeSpan.TimeSpansInRange, {
         variables: {
@@ -274,6 +275,38 @@ export const CalendarPage: React.FC = () => {
             },
         });
     };
+
+    const onDateClick: OptionsInput['dateClick'] = (data) => {
+        // Show a confirmation button when clicking/tapping an empty slot
+        const start = moment(data.date);
+        const end = moment(data.date).add(15, 'minutes');
+        // Use click coordinates for positioning
+        setPendingEntry({
+            start,
+            end,
+            x: data.jsEvent.pageX,
+            y: data.jsEvent.pageY
+        });
+    };
+
+    const handleConfirmCreate = () => {
+        if (pendingEntry) {
+            addTimeSpan({
+                variables: {
+                    start: pendingEntry.start.format(),
+                    end: pendingEntry.end.format(),
+                    tags: [],
+                    note: '',
+                },
+            });
+            setPendingEntry(null);
+        }
+    };
+
+    const handleCancelCreate = () => {
+        setPendingEntry(null);
+    };
+
     const onClick: OptionsInput['eventClick'] = (data) => {
         data.jsEvent.preventDefault();
         if (data.event.id === StartTimerId) {
@@ -514,6 +547,7 @@ export const CalendarPage: React.FC = () => {
                     slotDuration={{minute: 15}}
                     scrollTime={{hour: 6, minute: 30}}
                     select={onSelect}
+                    dateClick={onDateClick}
                     firstDay={moment.localeData().firstDayOfWeek()}
                     eventResize={onResize}
                     eventClick={onClick}
@@ -572,6 +606,36 @@ export const CalendarPage: React.FC = () => {
                 </Popper>
             )}
 
+            {/* Create Entry Confirmation Popup - "+" Button */}
+            {!!pendingEntry && (
+                <ClickAwayListener onClickAway={handleCancelCreate}>
+                    <div
+                        style={{
+                            position: 'absolute',
+                            left: pendingEntry.x,
+                            top: pendingEntry.y,
+                            transform: 'translate(-24px, -24px)',
+                            zIndex: 1200,
+                            pointerEvents: 'auto'
+                        }}
+                    >
+                        <IconButton
+                            onClick={handleConfirmCreate}
+                            style={{
+                                backgroundColor: theme.palette.primary.main,
+                                color: theme.palette.primary.contrastText,
+                                width: 48,
+                                height: 48,
+                                boxShadow: theme.shadows[8],
+                            }}
+                            title={`Create entry: ${pendingEntry.start.format('HH:mm')} - ${pendingEntry.end.format('HH:mm')}`}
+                        >
+                            <span style={{fontSize: '28px', fontWeight: 'bold'}}>+</span>
+                        </IconButton>
+                    </div>
+                </ClickAwayListener>
+            )}
+
             {/* Tag Filter Dialog */}
             <Dialog open={filterDialogOpen} onClose={() => setFilterDialogOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>Filter by Tags</DialogTitle>
@@ -582,7 +646,6 @@ export const CalendarPage: React.FC = () => {
                         onChange={(e) => setTagSearchText(e.target.value)}
                         fullWidth
                         margin="normal"
-                        autoFocus
                     />
                     <div style={{ maxHeight: 400, overflow: 'auto' }}>
                         <List>
