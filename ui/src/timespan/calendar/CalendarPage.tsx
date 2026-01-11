@@ -67,6 +67,7 @@ export const CalendarPage: React.FC = () => {
     const [tagSearchText, setTagSearchText] = React.useState<string>('');
     const [expandedKeys, setExpandedKeys] = React.useState<Set<string>>(new Set());
     const [tagValuesCache, setTagValuesCache] = React.useState<Map<string, string[]>>(new Map());
+    const [pendingEntry, setPendingEntry] = React.useState<{start: moment.Moment; end: moment.Moment; x: number; y: number} | null>(null);
 
     const timeSpansResult = useQuery<TimeSpansInRange, TimeSpansInRangeVariables>(gqlTimeSpan.TimeSpansInRange, {
         variables: {
@@ -274,6 +275,43 @@ export const CalendarPage: React.FC = () => {
             },
         });
     };
+
+    const onDateClick: OptionsInput['dateClick'] = (data) => {
+        // Show a floating "+" button when clicking/tapping an empty slot
+        const start = moment(data.date);
+        const end = moment(data.date).add(15, 'minutes');
+
+        // Get the click position relative to the viewport
+        const rect = data.jsEvent.target instanceof Element
+            ? (data.jsEvent.target as Element).getBoundingClientRect()
+            : {left: data.jsEvent.clientX, top: data.jsEvent.clientY};
+
+        setPendingEntry({
+            start,
+            end,
+            x: data.jsEvent.clientX || rect.left,
+            y: data.jsEvent.clientY || rect.top
+        });
+    };
+
+    const handleConfirmCreate = () => {
+        if (pendingEntry) {
+            addTimeSpan({
+                variables: {
+                    start: pendingEntry.start.format(),
+                    end: pendingEntry.end.format(),
+                    tags: [],
+                    note: '',
+                },
+            });
+            setPendingEntry(null);
+        }
+    };
+
+    const handleCancelCreate = () => {
+        setPendingEntry(null);
+    };
+
     const onClick: OptionsInput['eventClick'] = (data) => {
         data.jsEvent.preventDefault();
         if (data.event.id === StartTimerId) {
@@ -514,6 +552,7 @@ export const CalendarPage: React.FC = () => {
                     slotDuration={{minute: 15}}
                     scrollTime={{hour: 6, minute: 30}}
                     select={onSelect}
+                    dateClick={onDateClick}
                     firstDay={moment.localeData().firstDayOfWeek()}
                     eventResize={onResize}
                     eventClick={onClick}
@@ -570,6 +609,36 @@ export const CalendarPage: React.FC = () => {
                         </div>
                     </ClickAwayListener>
                 </Popper>
+            )}
+
+            {/* Create Entry Floating Button */}
+            {!!pendingEntry && (
+                <ClickAwayListener onClickAway={handleCancelCreate}>
+                    <div
+                        style={{
+                            position: 'fixed',
+                            left: pendingEntry.x,
+                            top: pendingEntry.y,
+                            transform: 'translate(-50%, -50%)',
+                            zIndex: 1200,
+                            pointerEvents: 'auto'
+                        }}
+                    >
+                        <IconButton
+                            onClick={handleConfirmCreate}
+                            style={{
+                                backgroundColor: theme.palette.primary.main,
+                                color: theme.palette.primary.contrastText,
+                                width: 48,
+                                height: 48,
+                                boxShadow: theme.shadows[8],
+                            }}
+                            title={`Create: ${pendingEntry.start.format('HH:mm')} - ${pendingEntry.end.format('HH:mm')}`}
+                        >
+                            <span style={{fontSize: '28px', fontWeight: 'bold'}}>+</span>
+                        </IconButton>
+                    </div>
+                </ClickAwayListener>
             )}
 
             {/* Tag Filter Dialog */}
