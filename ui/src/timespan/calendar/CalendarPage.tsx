@@ -1,5 +1,5 @@
 import * as React from 'react';
-import {Paper, useTheme, Button, Grid, TextField, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, Checkbox, Badge} from '@material-ui/core';
+import {Paper, useTheme, Button, TextField, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, Checkbox, Badge} from '@material-ui/core';
 import {ZoomIn, ZoomOut, FilterList, ChevronLeft, ChevronRight} from '@material-ui/icons';
 import moment from 'moment';
 import {useApolloClient, useMutation, useQuery} from '@apollo/react-hooks';
@@ -347,51 +347,39 @@ export const CalendarPage: React.FC = () => {
     const slotHeight = 21 * zoomLevel;  // Original default was 21px per 15-min slot
 
     return (
-        <Paper style={{padding: 8, left: 10, right: 10, bottom: 10, top: 80, position: 'absolute', display: 'flex', flexDirection: 'column'}} color="red">
-            <div style={{padding: '3px 8px', backgroundColor: theme.palette.background.default, marginBottom: 5, flexShrink: 0, borderRadius: 4}}>
-                <Grid container spacing={0} alignItems="center" wrap="nowrap">
-                    <Grid item>
-                        <IconButton size="small" onClick={handlePrev} title="Previous" style={{padding: 4}}>
-                            <ChevronLeft fontSize="small" />
-                        </IconButton>
-                    </Grid>
-                    <Grid item>
-                        <IconButton size="small" onClick={handleNext} title="Next" style={{padding: 4}}>
-                            <ChevronRight fontSize="small" />
-                        </IconButton>
-                    </Grid>
-                    <Grid item>
-                        <Button size="small" onClick={handleToday} style={{minWidth: 50, padding: '2px 8px', fontSize: '0.8rem'}}>Today</Button>
-                    </Grid>
-                    <Grid item>
-                        <TextField
-                            type="date"
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            InputLabelProps={{ shrink: true }}
-                            style={{width: 120}}
-                            inputProps={{style: {padding: '4px 8px', fontSize: '0.85rem'}}}
-                        />
-                    </Grid>
-                    <Grid item>
-                        <Button size="small" variant="contained" color="primary" onClick={handleGoToDate} style={{minWidth: 40, padding: '2px 8px', fontSize: '0.8rem', marginLeft: 4}}>
-                            Go
-                        </Button>
-                    </Grid>
-                    <Grid item style={{marginLeft: 'auto', display: 'flex', alignItems: 'center'}}>
-                        <Badge badgeContent={selectedTags.length} color="secondary">
-                            <IconButton size="small" onClick={handleOpenFilterDialog} title="Filter" style={{padding: 4}}>
-                                <FilterList fontSize="small" />
-                            </IconButton>
-                        </Badge>
-                        <IconButton size="small" onClick={handleZoomOut} disabled={zoomLevel <= 0.75} title="Zoom Out" style={{padding: 4}}>
-                            <ZoomOut fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" onClick={handleZoomIn} disabled={zoomLevel >= 2} title="Zoom In" style={{padding: 4}}>
-                            <ZoomIn fontSize="small" />
-                        </IconButton>
-                    </Grid>
-                </Grid>
+        <Paper style={{padding: 5, bottom: 10, top: 80, position: 'absolute', display: 'flex', flexDirection: 'column'}} color="red">
+            <div style={{padding: '4px 6px', backgroundColor: theme.palette.background.default, marginBottom: 5, flexShrink: 0, borderRadius: 4, display: 'flex', alignItems: 'center', flexWrap: 'nowrap'}}>
+                <IconButton size="small" onClick={handlePrev} title="Previous" style={{padding: 6, marginRight: 2}}>
+                    <ChevronLeft fontSize="small" />
+                </IconButton>
+                <IconButton size="small" onClick={handleNext} title="Next" style={{padding: 6, marginRight: 8}}>
+                    <ChevronRight fontSize="small" />
+                </IconButton>
+                <Button size="small" onClick={handleToday} style={{minWidth: 45, padding: '4px 8px', fontSize: '0.75rem', marginRight: 8}}>
+                    Today
+                </Button>
+                <TextField
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    InputLabelProps={{ shrink: true }}
+                    style={{width: 130, marginRight: 4}}
+                    inputProps={{style: {padding: '6px 8px', fontSize: '0.85rem'}}}
+                />
+                <Button size="small" variant="contained" color="primary" onClick={handleGoToDate} style={{minWidth: 35, padding: '4px 10px', fontSize: '0.75rem', marginRight: 'auto'}}>
+                    Go
+                </Button>
+                <Badge badgeContent={selectedTags.length} color="secondary" style={{marginRight: 4}}>
+                    <IconButton size="small" onClick={handleOpenFilterDialog} title="Filter" style={{padding: 6}}>
+                        <FilterList fontSize="small" />
+                    </IconButton>
+                </Badge>
+                <IconButton size="small" onClick={handleZoomOut} disabled={zoomLevel <= 0.75} title="Zoom Out" style={{padding: 6, marginRight: 2}}>
+                    <ZoomOut fontSize="small" />
+                </IconButton>
+                <IconButton size="small" onClick={handleZoomIn} disabled={zoomLevel >= 2} title="Zoom In" style={{padding: 6}}>
+                    <ZoomIn fontSize="small" />
+                </IconButton>
             </div>
             <div style={{flex: 1, overflow: 'hidden'}}>
             <FullCalendarStyling slotHeight={slotHeight}>
