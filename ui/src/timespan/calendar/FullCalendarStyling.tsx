@@ -258,7 +258,7 @@ const useStyle = makeStyles((theme) => {
     };
 });
 
-export const FullCalendarStyling: React.FC<FullCalendarStylingProps> = ({children, slotHeight = 42}) => {
+export const FullCalendarStyling: React.FC<FullCalendarStylingProps> = ({children, slotHeight = 21}) => {
     const classes = useStyle({slotHeight});
     return <div className={classes.root}>{children}</div>;
 };

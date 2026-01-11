@@ -1,6 +1,6 @@
 import * as React from 'react';
-import {Paper, useTheme, Button, Grid, TextField, IconButton, Select, MenuItem, Chip, Input, FormControl, InputLabel} from '@material-ui/core';
-import {ZoomIn, ZoomOut, Clear} from '@material-ui/icons';
+import {Paper, useTheme, Button, Grid, TextField, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, Checkbox, Badge} from '@material-ui/core';
+import {ZoomIn, ZoomOut, FilterList, ChevronLeft, ChevronRight} from '@material-ui/icons';
 import moment from 'moment';
 import {useApolloClient, useMutation, useQuery} from '@apollo/react-hooks';
 import {TimeSpans_timeSpans_timeSpans} from '../../gql/__generated__/TimeSpans';
@@ -59,7 +59,10 @@ export const CalendarPage: React.FC = () => {
     const calendarRef = React.useRef<FullCalendar>(null);
     const [selectedDate, setSelectedDate] = React.useState<string>(moment().format('YYYY-MM-DD'));
     const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
+    const [tempSelectedTags, setTempSelectedTags] = React.useState<string[]>([]);
     const [zoomLevel, setZoomLevel] = React.useState<number>(1);
+    const [filterDialogOpen, setFilterDialogOpen] = React.useState<boolean>(false);
+    const [tagSearchText, setTagSearchText] = React.useState<string>('');
 
     const timeSpansResult = useQuery<TimeSpansInRange, TimeSpansInRangeVariables>(gqlTimeSpan.TimeSpansInRange, {
         variables: {
@@ -269,6 +272,27 @@ export const CalendarPage: React.FC = () => {
         }
     };
 
+    const handlePrev = () => {
+        const calendarApi = calendarRef.current && calendarRef.current.getApi();
+        if (calendarApi) {
+            calendarApi.prev();
+        }
+    };
+
+    const handleNext = () => {
+        const calendarApi = calendarRef.current && calendarRef.current.getApi();
+        if (calendarApi) {
+            calendarApi.next();
+        }
+    };
+
+    const handleToday = () => {
+        const calendarApi = calendarRef.current && calendarRef.current.getApi();
+        if (calendarApi) {
+            calendarApi.today();
+        }
+    };
+
     // Get all unique tags from the data
     const allTags = React.useMemo(() => {
         if (!timeSpansResult.data || !timeSpansResult.data.timeSpans) {
@@ -285,74 +309,86 @@ export const CalendarPage: React.FC = () => {
         return Array.from(tagSet).sort();
     }, [timeSpansResult.data]);
 
+    // Filter tags based on search text
+    const filteredTags = React.useMemo(() => {
+        if (!tagSearchText) return allTags;
+        return allTags.filter(tag => tag.toLowerCase().includes(tagSearchText.toLowerCase()));
+    }, [allTags, tagSearchText]);
+
+    const handleOpenFilterDialog = () => {
+        setTempSelectedTags(selectedTags);
+        setTagSearchText('');
+        setFilterDialogOpen(true);
+    };
+
+    const handleApplyFilter = () => {
+        setSelectedTags(tempSelectedTags);
+        setFilterDialogOpen(false);
+    };
+
+    const handleClearAllTags = () => {
+        setTempSelectedTags([]);
+    };
+
+    const handleToggleTag = (tag: string) => {
+        setTempSelectedTags(prev =>
+            prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+        );
+    };
+
     const handleZoomIn = () => {
-        setZoomLevel(prev => Math.min(prev + 0.5, 4));
+        setZoomLevel(prev => Math.min(prev + 0.25, 2));
     };
 
     const handleZoomOut = () => {
-        setZoomLevel(prev => Math.max(prev - 0.5, 0.5));
+        setZoomLevel(prev => Math.max(prev - 0.25, 0.75));
     };
 
-    const slotHeight = 42 * zoomLevel;
+    const slotHeight = 21 * zoomLevel;  // Original default was 21px per 15-min slot
 
     return (
-        <Paper style={{padding: 10, bottom: 10, top: 80, position: 'absolute', display: 'flex', flexDirection: 'column'}} color="red">
-            <div style={{padding: 10, backgroundColor: theme.palette.background.default, marginBottom: 10, flexShrink: 0}}>
-                <Grid container spacing={2} alignItems="center">
+        <Paper style={{padding: 8, left: 10, right: 10, bottom: 10, top: 80, position: 'absolute', display: 'flex', flexDirection: 'column'}} color="red">
+            <div style={{padding: '3px 8px', backgroundColor: theme.palette.background.default, marginBottom: 5, flexShrink: 0, borderRadius: 4}}>
+                <Grid container spacing={0} alignItems="center" wrap="nowrap">
+                    <Grid item>
+                        <IconButton size="small" onClick={handlePrev} title="Previous" style={{padding: 4}}>
+                            <ChevronLeft fontSize="small" />
+                        </IconButton>
+                    </Grid>
+                    <Grid item>
+                        <IconButton size="small" onClick={handleNext} title="Next" style={{padding: 4}}>
+                            <ChevronRight fontSize="small" />
+                        </IconButton>
+                    </Grid>
+                    <Grid item>
+                        <Button size="small" onClick={handleToday} style={{minWidth: 50, padding: '2px 8px', fontSize: '0.8rem'}}>Today</Button>
+                    </Grid>
                     <Grid item>
                         <TextField
                             type="date"
-                            label="Jump to Date"
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
                             InputLabelProps={{ shrink: true }}
+                            style={{width: 120}}
+                            inputProps={{style: {padding: '4px 8px', fontSize: '0.85rem'}}}
                         />
                     </Grid>
                     <Grid item>
-                        <Button variant="contained" color="primary" onClick={handleGoToDate}>
+                        <Button size="small" variant="contained" color="primary" onClick={handleGoToDate} style={{minWidth: 40, padding: '2px 8px', fontSize: '0.8rem', marginLeft: 4}}>
                             Go
                         </Button>
                     </Grid>
-                    <Grid item xs>
-                        <FormControl style={{ minWidth: 250, maxWidth: 400 }}>
-                            <InputLabel id="tag-filter-label">Filter by Tags</InputLabel>
-                            <Select
-                                labelId="tag-filter-label"
-                                multiple
-                                value={selectedTags}
-                                onChange={(e) => setSelectedTags(e.target.value as string[])}
-                                input={<Input />}
-                                renderValue={(selected) => (
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                                        {(selected as string[]).map((value) => (
-                                            <Chip key={value} label={value} size="small" />
-                                        ))}
-                                    </div>
-                                )}
-                            >
-                                {allTags.map((tag) => (
-                                    <MenuItem key={tag} value={tag}>
-                                        {tag}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                    </Grid>
-                    <Grid item>
-                        <IconButton
-                            onClick={() => setSelectedTags([])}
-                            disabled={selectedTags.length === 0}
-                            title="Clear tag filter"
-                        >
-                            <Clear />
+                    <Grid item style={{marginLeft: 'auto', display: 'flex', alignItems: 'center'}}>
+                        <Badge badgeContent={selectedTags.length} color="secondary">
+                            <IconButton size="small" onClick={handleOpenFilterDialog} title="Filter" style={{padding: 4}}>
+                                <FilterList fontSize="small" />
+                            </IconButton>
+                        </Badge>
+                        <IconButton size="small" onClick={handleZoomOut} disabled={zoomLevel <= 0.75} title="Zoom Out" style={{padding: 4}}>
+                            <ZoomOut fontSize="small" />
                         </IconButton>
-                    </Grid>
-                    <Grid item>
-                        <IconButton onClick={handleZoomOut} disabled={zoomLevel <= 0.5} title="Zoom Out">
-                            <ZoomOut />
-                        </IconButton>
-                        <IconButton onClick={handleZoomIn} disabled={zoomLevel >= 4} title="Zoom In">
-                            <ZoomIn />
+                        <IconButton size="small" onClick={handleZoomIn} disabled={zoomLevel >= 2} title="Zoom In" style={{padding: 4}}>
+                            <ZoomIn fontSize="small" />
                         </IconButton>
                     </Grid>
                 </Grid>
@@ -419,11 +455,7 @@ export const CalendarPage: React.FC = () => {
                     columnHeaderFormat={(s) => toMoment(s.start.marker).format('DD ddd')}
                     nowIndicator={true}
                     plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, momentPlugin]}
-                    header={{
-                        center: 'title',
-                        left: 'prev,next today',
-                        right: 'timeGridWeek,timeGrid5Day,timeGridDay',
-                    }}
+                    header={false}
                 />
             </FullCalendarStyling>
             {!!selected.selected && (
@@ -472,6 +504,47 @@ export const CalendarPage: React.FC = () => {
                     </ClickAwayListener>
                 </Popper>
             )}
+
+            {/* Tag Filter Dialog */}
+            <Dialog open={filterDialogOpen} onClose={() => setFilterDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Filter by Tags</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        label="Search tags"
+                        value={tagSearchText}
+                        onChange={(e) => setTagSearchText(e.target.value)}
+                        fullWidth
+                        margin="normal"
+                        autoFocus
+                    />
+                    <div style={{ maxHeight: 400, overflow: 'auto' }}>
+                        <List>
+                            {filteredTags.map((tag) => (
+                                <ListItem key={tag} button onClick={() => handleToggleTag(tag)} dense>
+                                    <Checkbox
+                                        edge="start"
+                                        checked={tempSelectedTags.includes(tag)}
+                                        tabIndex={-1}
+                                        disableRipple
+                                    />
+                                    <ListItemText primary={tag} />
+                                </ListItem>
+                            ))}
+                        </List>
+                    </div>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleClearAllTags} color="default">
+                        Clear All
+                    </Button>
+                    <Button onClick={() => setFilterDialogOpen(false)} color="default">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleApplyFilter} color="primary" variant="contained">
+                        Apply
+                    </Button>
+                </DialogActions>
+            </Dialog>
             </div>
         </Paper>
     );
