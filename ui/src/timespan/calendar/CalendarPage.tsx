@@ -143,6 +143,15 @@ export const CalendarPage: React.FC = () => {
 
         const allEvents = timeSpansResult.data.timeSpans.timeSpans
             .concat(trackersResult.data.timers)
+            .filter((ts) => {
+                // Filter out entries that are less than 60 seconds (1 minute)
+                // These are too short to display meaningfully in the calendar view
+                if (!ts.end) {
+                    return true; // Keep running timers
+                }
+                const durationSeconds = moment(ts.end).diff(moment(ts.start), 'seconds');
+                return durationSeconds >= 60;
+            })
             .sort((a, b) => a.start.toString().localeCompare(b.start.toString()));
 
         // Filter by selected tags if any
@@ -182,16 +191,23 @@ export const CalendarPage: React.FC = () => {
                 const startMoment = moment(ts.start);
                 const endMoment = moment(ts.end || currentDate);
 
-                // Fix overlapping: if end time is within the same minute as start time,
-                // add 1 minute to the end time for display purposes
-                let displayEnd = endMoment;
-                if (ts.end && startMoment.format('YYYY-MM-DD HH:mm') === endMoment.format('YYYY-MM-DD HH:mm')) {
-                    displayEnd = moment(endMoment).add(1, 'minute');
+                // Round to minute boundaries to prevent false overlap detection.
+                // Since the UI only allows editing at minute-level precision, entries that
+                // end/start within the same minute (e.g., A ends 4:20:38, B starts 4:20:46)
+                // should be treated as adjacent, not overlapping.
+                const displayStart = moment(startMoment).startOf('minute').toDate();
+                let displayEndDate = endMoment.toDate();
+
+                if (ts.end) {
+                    // End at the beginning of the end minute minus 1ms
+                    // This way, an entry ending at 4:20:XX displays as ending at 4:19:59.999
+                    // So it doesn't overlap with an entry starting at 4:20:XX
+                    displayEndDate = moment(endMoment).startOf('minute').subtract(1, 'millisecond').toDate();
                 }
 
                 return {
-                    start: startMoment.toDate(),
-                    end: displayEnd.toDate(),
+                    start: displayStart,
+                    end: displayEndDate,
                     hasEnd: !!ts.end,
                     editable: !!ts.end,
                     backgroundColor: color,
