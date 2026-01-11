@@ -1,12 +1,13 @@
 import * as React from 'react';
-import {Paper, useTheme, Button, TextField, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, Checkbox, Badge} from '@material-ui/core';
-import {ZoomIn, ZoomOut, FilterList, ChevronLeft, ChevronRight} from '@material-ui/icons';
+import {Paper, useTheme, Button, TextField, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, Checkbox, Badge, Collapse} from '@material-ui/core';
+import {ZoomIn, ZoomOut, FilterList, ChevronLeft, ChevronRight, ExpandLess, ExpandMore} from '@material-ui/icons';
 import moment from 'moment';
-import {useApolloClient, useMutation, useQuery} from '@apollo/react-hooks';
+import {useApolloClient, useMutation, useQuery, useLazyQuery} from '@apollo/react-hooks';
 import {TimeSpans_timeSpans_timeSpans} from '../../gql/__generated__/TimeSpans';
 import * as gqlTimeSpan from '../../gql/timeSpan';
 import {Trackers} from '../../gql/__generated__/Trackers';
 import {Tags} from '../../gql/__generated__/Tags';
+import {SuggestTagValue, SuggestTagValueVariables} from '../../gql/__generated__/SuggestTagValue';
 import * as gqlTag from '../../gql/tags';
 import FullCalendar from '@fullcalendar/react';
 import {calculateColor, ColorMode} from '../colorutils';
@@ -58,11 +59,14 @@ export const CalendarPage: React.FC = () => {
     const theme = useTheme();
     const calendarRef = React.useRef<FullCalendar>(null);
     const [selectedDate, setSelectedDate] = React.useState<string>(moment().format('YYYY-MM-DD'));
+    const [isManualDateChange, setIsManualDateChange] = React.useState<boolean>(false);
     const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
     const [tempSelectedTags, setTempSelectedTags] = React.useState<string[]>([]);
     const [zoomLevel, setZoomLevel] = React.useState<number>(1);
     const [filterDialogOpen, setFilterDialogOpen] = React.useState<boolean>(false);
     const [tagSearchText, setTagSearchText] = React.useState<string>('');
+    const [expandedKeys, setExpandedKeys] = React.useState<Set<string>>(new Set());
+    const [tagValuesCache, setTagValuesCache] = React.useState<Map<string, string[]>>(new Map());
 
     const timeSpansResult = useQuery<TimeSpansInRange, TimeSpansInRangeVariables>(gqlTimeSpan.TimeSpansInRange, {
         variables: {
@@ -77,6 +81,20 @@ export const CalendarPage: React.FC = () => {
     });
     const trackersResult = useQuery<Trackers>(gqlTimeSpan.Trackers, {fetchPolicy: 'cache-and-network'});
     const tagsResult = useQuery<Tags>(gqlTag.Tags);
+    const [fetchTagValues, {data: tagValuesData, called: tagValuesCalled}] = useLazyQuery<SuggestTagValue, SuggestTagValueVariables>(gqlTag.SuggestTagValue);
+
+    // Store the key we're currently fetching values for
+    const [fetchingKey, setFetchingKey] = React.useState<string | null>(null);
+
+    // Update cache when tag values are fetched
+    React.useEffect(() => {
+        if (tagValuesCalled && tagValuesData && fetchingKey && !tagValuesCache.has(fetchingKey)) {
+            const newCache = new Map(tagValuesCache);
+            newCache.set(fetchingKey, tagValuesData.values || []);
+            setTagValuesCache(newCache);
+            setFetchingKey(null);
+        }
+    }, [tagValuesData, tagValuesCalled, fetchingKey, tagValuesCache]);
     const [startTimer] = useMutation<StartTimer, StartTimerVariables>(gqlTimeSpan.StartTimer, {
         refetchQueries: [{query: gqlTimeSpan.Trackers}],
     });
@@ -284,6 +302,7 @@ export const CalendarPage: React.FC = () => {
     const handleGoToDate = () => {
         const calendarApi = calendarRef.current && calendarRef.current.getApi();
         if (calendarApi) {
+            setIsManualDateChange(false);
             calendarApi.gotoDate(selectedDate);
         }
     };
@@ -291,6 +310,7 @@ export const CalendarPage: React.FC = () => {
     const handlePrev = () => {
         const calendarApi = calendarRef.current && calendarRef.current.getApi();
         if (calendarApi) {
+            setIsManualDateChange(false);
             calendarApi.prev();
         }
     };
@@ -298,6 +318,7 @@ export const CalendarPage: React.FC = () => {
     const handleNext = () => {
         const calendarApi = calendarRef.current && calendarRef.current.getApi();
         if (calendarApi) {
+            setIsManualDateChange(false);
             calendarApi.next();
         }
     };
@@ -305,35 +326,21 @@ export const CalendarPage: React.FC = () => {
     const handleToday = () => {
         const calendarApi = calendarRef.current && calendarRef.current.getApi();
         if (calendarApi) {
+            setIsManualDateChange(false);
             calendarApi.today();
         }
     };
 
-    // Get all unique tags from the data
-    const allTags = React.useMemo(() => {
-        if (!timeSpansResult.data || !timeSpansResult.data.timeSpans) {
-            return [];
-        }
-        const tagSet = new Set<string>();
-        timeSpansResult.data.timeSpans.timeSpans.forEach(ts => {
-            if (ts.tags) {
-                ts.tags.forEach(tag => {
-                    tagSet.add(tag.key + ':' + tag.value);
-                });
-            }
-        });
-        return Array.from(tagSet).sort();
-    }, [timeSpansResult.data]);
-
-    // Filter tags based on search text
-    const filteredTags = React.useMemo(() => {
-        if (!tagSearchText) return allTags;
-        return allTags.filter(tag => tag.toLowerCase().includes(tagSearchText.toLowerCase()));
-    }, [allTags, tagSearchText]);
+    const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setIsManualDateChange(true);
+        setSelectedDate(e.target.value);
+    };
 
     const handleOpenFilterDialog = () => {
         setTempSelectedTags(selectedTags);
         setTagSearchText('');
+        setExpandedKeys(new Set());
+        setTagValuesCache(new Map());
         setFilterDialogOpen(true);
     };
 
@@ -346,11 +353,60 @@ export const CalendarPage: React.FC = () => {
         setTempSelectedTags([]);
     };
 
-    const handleToggleTag = (tag: string) => {
+    const handleToggleKey = (key: string) => {
+        const newExpandedKeys = new Set(expandedKeys);
+
+        if (newExpandedKeys.has(key)) {
+            // Collapse the key
+            newExpandedKeys.delete(key);
+            setExpandedKeys(newExpandedKeys);
+        } else {
+            // Expand the key and fetch values if not cached
+            newExpandedKeys.add(key);
+            setExpandedKeys(newExpandedKeys);
+
+            if (!tagValuesCache.has(key)) {
+                setFetchingKey(key);
+                fetchTagValues({
+                    variables: { tag: key, query: '' }
+                });
+            }
+        }
+    };
+
+    const handleToggleValue = (key: string, value: string) => {
+        const tagString = `${key}:${value}`;
         setTempSelectedTags(prev =>
-            prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+            prev.includes(tagString) ? prev.filter(t => t !== tagString) : [...prev, tagString]
         );
     };
+
+    const handleSelectAllValues = (key: string) => {
+        const values = tagValuesCache.get(key) || [];
+        const tagStrings = values.map(v => `${key}:${v}`);
+        setTempSelectedTags(prev => {
+            const filtered = prev.filter(t => !t.startsWith(`${key}:`));
+            return [...filtered, ...tagStrings];
+        });
+    };
+
+    const handleDeselectAllValues = (key: string) => {
+        setTempSelectedTags(prev => prev.filter(t => !t.startsWith(`${key}:`)));
+    };
+
+    // Get all tag keys from the database
+    const allTagKeys = React.useMemo(() => {
+        if (!tagsResult.data || !tagsResult.data.tags) {
+            return [];
+        }
+        return tagsResult.data.tags.map(tag => tag.key).sort();
+    }, [tagsResult.data]);
+
+    // Filter keys based on search text
+    const filteredKeys = React.useMemo(() => {
+        if (!tagSearchText) return allTagKeys;
+        return allTagKeys.filter(key => key.toLowerCase().includes(tagSearchText.toLowerCase()));
+    }, [allTagKeys, tagSearchText]);
 
     const handleZoomIn = () => {
         setZoomLevel(prev => Math.min(prev + 0.25, 2));
@@ -377,7 +433,7 @@ export const CalendarPage: React.FC = () => {
                 <TextField
                     type="date"
                     value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
+                    onChange={handleDateInputChange}
                     InputLabelProps={{ shrink: true }}
                     style={{width: 130, marginRight: 4}}
                     inputProps={{style: {padding: '6px 8px', fontSize: '0.85rem'}}}
@@ -408,6 +464,13 @@ export const CalendarPage: React.FC = () => {
                             start: moment(x.view.currentStart).format(),
                             end: moment(x.view.currentEnd).format()
                         };
+
+                        // Update the date picker to reflect the current view (only if user is not manually typing)
+                        if (!isManualDateChange) {
+                            const currentViewDate = moment(x.view.currentStart).add(3, 'days').format('YYYY-MM-DD');
+                            setSelectedDate(currentViewDate);
+                        }
+
                         if (
                             timeSpansResult.variables &&
                             (timeSpansResult.variables.start !== range.start ||
@@ -514,7 +577,7 @@ export const CalendarPage: React.FC = () => {
                 <DialogTitle>Filter by Tags</DialogTitle>
                 <DialogContent>
                     <TextField
-                        label="Search tags"
+                        label="Search tag keys"
                         value={tagSearchText}
                         onChange={(e) => setTagSearchText(e.target.value)}
                         fullWidth
@@ -523,17 +586,74 @@ export const CalendarPage: React.FC = () => {
                     />
                     <div style={{ maxHeight: 400, overflow: 'auto' }}>
                         <List>
-                            {filteredTags.map((tag) => (
-                                <ListItem key={tag} button onClick={() => handleToggleTag(tag)} dense>
-                                    <Checkbox
-                                        edge="start"
-                                        checked={tempSelectedTags.includes(tag)}
-                                        tabIndex={-1}
-                                        disableRipple
-                                    />
-                                    <ListItemText primary={tag} />
-                                </ListItem>
-                            ))}
+                            {filteredKeys.map((key) => {
+                                const isExpanded = expandedKeys.has(key);
+                                const values = tagValuesCache.get(key) || [];
+                                const selectedValuesCount = tempSelectedTags.filter(t => t.startsWith(`${key}:`)).length;
+
+                                return (
+                                    <React.Fragment key={key}>
+                                        <ListItem button onClick={() => handleToggleKey(key)} dense>
+                                            <ListItemText
+                                                primary={key}
+                                                secondary={selectedValuesCount > 0 ? `${selectedValuesCount} selected` : undefined}
+                                            />
+                                            {isExpanded ? <ExpandLess /> : <ExpandMore />}
+                                        </ListItem>
+                                        <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                                            <div style={{ paddingLeft: 16 }}>
+                                                {values.length > 0 && (
+                                                    <div style={{ padding: '4px 16px' }}>
+                                                        <Button
+                                                            size="small"
+                                                            onClick={() => handleSelectAllValues(key)}
+                                                            style={{ marginRight: 8 }}
+                                                        >
+                                                            Select All
+                                                        </Button>
+                                                        <Button
+                                                            size="small"
+                                                            onClick={() => handleDeselectAllValues(key)}
+                                                        >
+                                                            Deselect All
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                                <List component="div" disablePadding>
+                                                    {values.map((value) => {
+                                                        const tagString = `${key}:${value}`;
+                                                        return (
+                                                            <ListItem
+                                                                key={value}
+                                                                button
+                                                                onClick={() => handleToggleValue(key, value)}
+                                                                dense
+                                                                style={{ paddingLeft: 32 }}
+                                                            >
+                                                                <Checkbox
+                                                                    edge="start"
+                                                                    checked={tempSelectedTags.includes(tagString)}
+                                                                    tabIndex={-1}
+                                                                    disableRipple
+                                                                />
+                                                                <ListItemText primary={value} />
+                                                            </ListItem>
+                                                        );
+                                                    })}
+                                                    {values.length === 0 && (
+                                                        <ListItem dense style={{ paddingLeft: 32 }}>
+                                                            <ListItemText
+                                                                primary={fetchingKey === key ? "Loading values..." : "No values found"}
+                                                                primaryTypographyProps={{ color: 'textSecondary' }}
+                                                            />
+                                                        </ListItem>
+                                                    )}
+                                                </List>
+                                            </div>
+                                        </Collapse>
+                                    </React.Fragment>
+                                );
+                            })}
                         </List>
                     </div>
                 </DialogContent>

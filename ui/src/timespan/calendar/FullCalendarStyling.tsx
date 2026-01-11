@@ -200,10 +200,12 @@ const useStyle = makeStyles((theme) => {
             '& .fc .fc-content': {
                 height: '100%',
                 textAlign: 'center',
-                paddingTop: '8px',
+                padding: '2px 4px',
                 display: 'flex',
                 alignItems: 'flex-start',
                 justifyContent: 'center',
+                overflow: 'hidden',
+                boxSizing: 'border-box',
             },
             '& .fc .fc-content .stop': {
                 background: theme.palette.type === 'dark' ? 'rgba(255,255,255,.2) !important' : 'rgba(0,0,0,.1) !important',
