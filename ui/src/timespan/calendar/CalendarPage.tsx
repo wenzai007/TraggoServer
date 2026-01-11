@@ -277,20 +277,15 @@ export const CalendarPage: React.FC = () => {
     };
 
     const onDateClick: OptionsInput['dateClick'] = (data) => {
-        // Show a floating "+" button when clicking/tapping an empty slot
+        // Show a confirmation button when clicking/tapping an empty slot
         const start = moment(data.date);
         const end = moment(data.date).add(15, 'minutes');
-
-        // Get the accurate tap/click position
-        // Use clientX/Y for the actual pointer position
-        const x = data.jsEvent.clientX;
-        const y = data.jsEvent.clientY;
-
+        // Use click coordinates for positioning
         setPendingEntry({
             start,
             end,
-            x,
-            y
+            x: data.jsEvent.pageX,
+            y: data.jsEvent.pageY
         });
     };
 
@@ -611,15 +606,15 @@ export const CalendarPage: React.FC = () => {
                 </Popper>
             )}
 
-            {/* Create Entry Floating Button */}
+            {/* Create Entry Confirmation Popup - "+" Button */}
             {!!pendingEntry && (
                 <ClickAwayListener onClickAway={handleCancelCreate}>
                     <div
                         style={{
-                            position: 'fixed',
+                            position: 'absolute',
                             left: pendingEntry.x,
                             top: pendingEntry.y,
-                            transform: 'translate(-50%, -50%)',
+                            transform: 'translate(-24px, -24px)',
                             zIndex: 1200,
                             pointerEvents: 'auto'
                         }}
@@ -633,7 +628,7 @@ export const CalendarPage: React.FC = () => {
                                 height: 48,
                                 boxShadow: theme.shadows[8],
                             }}
-                            title={`Create: ${pendingEntry.start.format('HH:mm')} - ${pendingEntry.end.format('HH:mm')}`}
+                            title={`Create entry: ${pendingEntry.start.format('HH:mm')} - ${pendingEntry.end.format('HH:mm')}`}
                         >
                             <span style={{fontSize: '28px', fontWeight: 'bold'}}>+</span>
                         </IconButton>
