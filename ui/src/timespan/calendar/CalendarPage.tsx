@@ -81,7 +81,35 @@ export const CalendarPage: React.FC = () => {
         fetchPolicy: 'cache-and-network',
     });
     const trackersResult = useQuery<Trackers>(gqlTimeSpan.Trackers, {fetchPolicy: 'cache-and-network'});
-    const tagsResult = useQuery<Tags>(gqlTag.Tags);
+
+    // Get unique tag keys from current week's timespans for color mapping
+    const visibleTagKeys = React.useMemo(() => {
+        if (!timeSpansResult.data || !timeSpansResult.data.timeSpans) return [];
+        if (!trackersResult.data || !trackersResult.data.timers) return [];
+
+        const allTimespans = [
+            ...timeSpansResult.data.timeSpans.timeSpans,
+            ...trackersResult.data.timers
+        ];
+
+        const keys = new Set<string>();
+        allTimespans.forEach(ts => {
+            if (ts.tags) {
+                ts.tags.forEach(tag => keys.add(tag.key));
+            }
+        });
+        return Array.from(keys);
+    }, [timeSpansResult.data, trackersResult.data]);
+
+    // Query only tags that are visible in current week for colors
+    const visibleTagsResult = useQuery<Tags>(gqlTag.Tags, {
+        fetchPolicy: 'cache-and-network',
+        skip: visibleTagKeys.length === 0,
+    });
+
+    // Lazy query for ALL tags (used by filter dialog)
+    const [fetchAllTags, allTagsResult] = useLazyQuery<Tags>(gqlTag.Tags, {fetchPolicy: 'cache-and-network'});
+
     const [fetchTagValues, {data: tagValuesData, called: tagValuesCalled}] = useLazyQuery<SuggestTagValue, SuggestTagValueVariables>(gqlTag.SuggestTagValue);
 
     // Store the key we're currently fetching values for
@@ -146,17 +174,17 @@ export const CalendarPage: React.FC = () => {
             trackersResult.loading ||
             !trackersResult.data ||
             trackersResult.data.timers === null ||
-            tagsResult.error ||
-            tagsResult.loading ||
-            !tagsResult.data ||
-            tagsResult.data.tags === null
+            visibleTagsResult.error ||
+            visibleTagsResult.loading ||
+            !visibleTagsResult.data ||
+            visibleTagsResult.data.tags === null
         ) {
             return [];
         }
 
         // Create a map of tag keys to their colors from the database
         const tagColorMap = new Map<string, string>();
-        tagsResult.data.tags.forEach(tag => {
+        visibleTagsResult.data.tags.forEach(tag => {
             tagColorMap.set(tag.key, tag.color);
         });
 
@@ -375,6 +403,10 @@ export const CalendarPage: React.FC = () => {
         setExpandedKeys(new Set());
         setTagValuesCache(new Map());
         setFilterDialogOpen(true);
+        // Fetch ALL tags when opening the filter dialog
+        if (!allTagsResult.data && !allTagsResult.loading) {
+            fetchAllTags();
+        }
     };
 
     const handleApplyFilter = () => {
@@ -427,13 +459,13 @@ export const CalendarPage: React.FC = () => {
         setTempSelectedTags(prev => prev.filter(t => !t.startsWith(`${key}:`)));
     };
 
-    // Get all tag keys from the database
+    // Get all tag keys from the database (for filter dialog)
     const allTagKeys = React.useMemo(() => {
-        if (!tagsResult.data || !tagsResult.data.tags) {
+        if (!allTagsResult.data || !allTagsResult.data.tags) {
             return [];
         }
-        return tagsResult.data.tags.map(tag => tag.key).sort();
-    }, [tagsResult.data]);
+        return allTagsResult.data.tags.map(tag => tag.key).sort();
+    }, [allTagsResult.data]);
 
     // Filter keys based on search text
     const filteredKeys = React.useMemo(() => {
@@ -589,7 +621,7 @@ export const CalendarPage: React.FC = () => {
                                     to: selected.data!.end ? moment(selected.data!.end) : undefined,
                                 }}
                                 initialTags={toTagSelectorEntry(
-                                    tagsResult.data!.tags!,
+                                    visibleTagsResult.data!.tags!,
                                     selected.data!.tags!.map((tag) => ({key: tag.key, value: tag.value}))
                                 )}
                                 note={selected.data!.note}
@@ -648,7 +680,13 @@ export const CalendarPage: React.FC = () => {
                         margin="normal"
                     />
                     <div style={{ maxHeight: 400, overflow: 'auto' }}>
-                        <List>
+                        {allTagsResult.loading && (
+                            <div style={{ padding: '20px', textAlign: 'center', color: theme.palette.text.secondary }}>
+                                Loading tags...
+                            </div>
+                        )}
+                        {!allTagsResult.loading && (
+                            <List>
                             {filteredKeys.map((key) => {
                                 const isExpanded = expandedKeys.has(key);
                                 const values = tagValuesCache.get(key) || [];
@@ -718,6 +756,7 @@ export const CalendarPage: React.FC = () => {
                                 );
                             })}
                         </List>
+                        )}
                     </div>
                 </DialogContent>
                 <DialogActions>
