@@ -481,6 +481,10 @@ export const CalendarPage: React.FC = () => {
         setZoomLevel(prev => Math.max(prev - 0.25, 0.75));
     };
 
+    // Detect if device supports touch (mobile)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
     const slotHeight = 21 * zoomLevel;  // Original default was 21px per 15-min slot
 
     return (
@@ -552,7 +556,9 @@ export const CalendarPage: React.FC = () => {
                             hiddenDays: [0, 6],
                         },
                     }}
-                    editable={true}
+                    editable={!isTouchDevice}
+                    eventStartEditable={!isTouchDevice}
+                    eventDurationEditable={!isTouchDevice}
                     events={values}
                     slotEventOverlap={false}
                     allDaySlot={false}
