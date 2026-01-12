@@ -207,6 +207,12 @@ const useStyle = makeStyles((theme) => {
                 overflow: 'hidden',
                 boxSizing: 'border-box',
             },
+            // Hide resize handles on touch devices
+            '@media (hover: none) and (pointer: coarse)': {
+                '& .fc-event .fc-resizer': {
+                    display: 'none !important',
+                },
+            },
             '& .fc .fc-content .stop': {
                 background: theme.palette.type === 'dark' ? 'rgba(255,255,255,.2) !important' : 'rgba(0,0,0,.1) !important',
                 borderRadius: '6px 0 0 0',
