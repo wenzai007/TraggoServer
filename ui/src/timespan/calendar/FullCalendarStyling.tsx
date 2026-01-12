@@ -207,22 +207,6 @@ const useStyle = makeStyles((theme) => {
                 overflow: 'hidden',
                 boxSizing: 'border-box',
             },
-            // Make resize handles touch-friendly
-            '& .fc-event .fc-resizer': {
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: '20px',
-                cursor: 'ns-resize',
-                zIndex: 4,
-            },
-            // Increase touch target area on mobile
-            '@media (max-width: 768px)': {
-                '& .fc-event .fc-resizer': {
-                    height: '30px',
-                },
-            },
             '& .fc .fc-content .stop': {
                 background: theme.palette.type === 'dark' ? 'rgba(255,255,255,.2) !important' : 'rgba(0,0,0,.1) !important',
                 borderRadius: '6px 0 0 0',
