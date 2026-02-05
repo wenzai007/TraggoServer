@@ -6,6 +6,8 @@ Write-Host "=== Traggo Build and Deploy Script ===" -ForegroundColor Cyan
 # Step 1: Build the UI
 Write-Host "`n[Step 1/4] Building Traggo UI..." -ForegroundColor Yellow
 Set-Location "C:\Users\wenzzha\working\repos\TraggoServer\ui"
+# we have to use 16 to build. 
+nvm use 16
 yarn build
 
 if ($LASTEXITCODE -ne 0) {
@@ -18,7 +20,7 @@ Write-Host "UI build completed successfully!" -ForegroundColor Green
 # Step 2: Build the release binary
 Write-Host "`n[Step 2/4] Building Traggo release binary..." -ForegroundColor Yellow
 Set-Location "C:\Users\wenzzha\working\repos\TraggoServer"
-docker run --rm -e CGO_ENABLED=1 -v /var/run/docker.sock:/var/run/docker.sock -v /c/Users/wenzzha/working/repos/TraggoServer:/work -w /work traggo:build release --clean --snapshot --skip=docker
+docker run --rm -e CGO_ENABLED=1 -v //var/run/docker.sock:/var/run/docker.sock -v C:/Users/wenzzha/working/repos/TraggoServer:/work -w /work traggo:build release --clean --snapshot --skip=docker
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: Docker build failed!" -ForegroundColor Red

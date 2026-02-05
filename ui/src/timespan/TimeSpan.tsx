@@ -321,7 +321,7 @@ export const TimeSpan: React.FC<TimeSpanProps> = React.memo(
                                 onClick={() => {
                                     setOpenMenu(null);
                                     // Stop all active timers first
-                                    const activeTimers = trackersResult.data?.timers || [];
+                                    const activeTimers = trackersResult.data && trackersResult.data.timers ? trackersResult.data.timers : [];
                                     const stopPromises = activeTimers.map((timer) =>
                                         stopTimer({variables: {id: timer.id, end: inUserTz(moment()).format()}})
                                     );
