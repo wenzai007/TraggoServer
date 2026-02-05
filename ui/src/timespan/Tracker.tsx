@@ -17,7 +17,7 @@ import {InputTimeSpanTag} from '../gql/__generated__/globalTypes';
 import {AddTimeSpan, AddTimeSpanVariables} from '../gql/__generated__/AddTimeSpan';
 import {useSnackbar} from 'notistack';
 import {inUserTz} from './timeutils';
-import {addTimeSpanToCache} from '../gql/utils';
+import {addTimeSpanToCache, removeFromTrackersCache} from '../gql/utils';
 import * as gqlStats from '../gql/statistics';
 import {Trackers} from '../gql/__generated__/Trackers';
 import {StopTimer, StopTimerVariables} from '../gql/__generated__/StopTimer';
@@ -50,6 +50,13 @@ export const Tracker: React.FC<TrackerProps> = ({selectedEntries, onSelectedEntr
     });
     const [stopTimer] = useMutation<StopTimer, StopTimerVariables>(gqlTimeSpan.StopTimer, {
         refetchQueries: [{query: gqlStats.Stats2}],
+        update: (cache, {data}) => {
+            if (!data || !data.stopTimeSpan) {
+                return;
+            }
+            removeFromTrackersCache(cache, data);
+            addTimeSpanToCache(cache, data.stopTimeSpan);
+        },
     });
     const [addTimeSpan] = useMutation<AddTimeSpan, AddTimeSpanVariables>(gqlTimeSpan.AddTimeSpan, {
         refetchQueries: [{query: gqlStats.Stats2}],
@@ -75,7 +82,7 @@ export const Tracker: React.FC<TrackerProps> = ({selectedEntries, onSelectedEntr
         );
         if (type === Type.Tracker) {
             // Stop all active timers first in Tracker mode
-            const activeTimers = trackersResult.data?.timers || [];
+            const activeTimers = trackersResult.data && trackersResult.data.timers ? trackersResult.data.timers : [];
             const stopPromises = activeTimers.map((timer) =>
                 stopTimer({variables: {id: timer.id, end: inUserTz(moment()).format()}})
             );
