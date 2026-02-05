@@ -8,7 +8,8 @@
       "Bash(npm install @material-ui/lab)",
       "Bash(npm install:*)",
       "Bash(npm uninstall:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git add:*)"
     ]
   }
 }
