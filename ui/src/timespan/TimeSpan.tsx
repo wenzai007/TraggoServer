@@ -6,7 +6,7 @@ import Paper from '@material-ui/core/Paper';
 import {DateTimeSelector} from '../common/DateTimeSelector';
 import {Button, TextField, Typography, makeStyles} from '@material-ui/core';
 import {inUserTz} from './timeutils';
-import {useMutation} from '@apollo/react-hooks';
+import {useMutation, useQuery} from '@apollo/react-hooks';
 import {StopTimer, StopTimerVariables} from '../gql/__generated__/StopTimer';
 import * as gqlTimeSpan from '../gql/timeSpan';
 import {UpdateTimeSpan, UpdateTimeSpanVariables} from '../gql/__generated__/UpdateTimeSpan';
@@ -106,6 +106,7 @@ export const TimeSpan: React.FC<TimeSpanProps> = React.memo(
         const [openMenu, setOpenMenu] = useStateAndDelegateWithDelayOnChange<null | HTMLElement>(null, (o) =>
             dateSelectorOpen(!!o)
         );
+        const trackersResult = useQuery<Trackers>(gqlTimeSpan.Trackers, {fetchPolicy: 'cache-and-network'});
         const [stopTimer] = useMutation<StopTimer, StopTimerVariables>(gqlTimeSpan.StopTimer, {
             refetchQueries: [{query: gqlStats.Stats2}],
             update: (cache, {data}) => {
@@ -319,13 +320,21 @@ export const TimeSpan: React.FC<TimeSpanProps> = React.memo(
                             <MenuItem
                                 onClick={() => {
                                     setOpenMenu(null);
-                                    startTimer({
-                                        variables: {
-                                            start: inUserTz(moment()).format(),
-                                            tags: toInputTags(selectedEntries),
-                                            note: note.current.value,
-                                        },
-                                    }).then(() => continued());
+                                    // Stop all active timers first
+                                    const activeTimers = trackersResult.data?.timers || [];
+                                    const stopPromises = activeTimers.map((timer) =>
+                                        stopTimer({variables: {id: timer.id, end: inUserTz(moment()).format()}})
+                                    );
+
+                                    Promise.all(stopPromises).then(() => {
+                                        startTimer({
+                                            variables: {
+                                                start: inUserTz(moment()).format(),
+                                                tags: toInputTags(selectedEntries),
+                                                note: note.current.value,
+                                            },
+                                        }).then(() => continued());
+                                    });
                                 }}>
                                 Continue
                             </MenuItem>

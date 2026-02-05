@@ -10,7 +10,7 @@ import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
 import ClickAwayListener from '@material-ui/core/ClickAwayListener';
 import {DateTimeSelector} from '../common/DateTimeSelector';
-import {useMutation} from '@apollo/react-hooks';
+import {useMutation, useQuery} from '@apollo/react-hooks';
 import * as gqlTimeSpan from '../gql/timeSpan';
 import {StartTimer, StartTimerVariables} from '../gql/__generated__/StartTimer';
 import {InputTimeSpanTag} from '../gql/__generated__/globalTypes';
@@ -19,6 +19,8 @@ import {useSnackbar} from 'notistack';
 import {inUserTz} from './timeutils';
 import {addTimeSpanToCache} from '../gql/utils';
 import * as gqlStats from '../gql/statistics';
+import {Trackers} from '../gql/__generated__/Trackers';
+import {StopTimer, StopTimerVariables} from '../gql/__generated__/StopTimer';
 
 enum Type {
     Tracker,
@@ -42,8 +44,12 @@ export const Tracker: React.FC<TrackerProps> = ({selectedEntries, onSelectedEntr
     const [to, setTo] = React.useState<moment.Moment>(moment());
     const [showDate, setShowDate] = React.useState(false);
     const [hasInvalidRange, setHasInvalidRange] = React.useState(false);
+    const trackersResult = useQuery<Trackers>(gqlTimeSpan.Trackers, {fetchPolicy: 'cache-and-network'});
     const [startTimer] = useMutation<StartTimer, StartTimerVariables>(gqlTimeSpan.StartTimer, {
         refetchQueries: [{query: gqlTimeSpan.Trackers}, {query: gqlStats.Stats2}],
+    });
+    const [stopTimer] = useMutation<StopTimer, StopTimerVariables>(gqlTimeSpan.StopTimer, {
+        refetchQueries: [{query: gqlStats.Stats2}],
     });
     const [addTimeSpan] = useMutation<AddTimeSpan, AddTimeSpanVariables>(gqlTimeSpan.AddTimeSpan, {
         refetchQueries: [{query: gqlStats.Stats2}],
@@ -68,9 +74,17 @@ export const Tracker: React.FC<TrackerProps> = ({selectedEntries, onSelectedEntr
             (entry: TagSelectorEntry): InputTimeSpanTag => ({key: entry.tag.key, value: entry.value})
         );
         if (type === Type.Tracker) {
-            startTimer({variables: {start: inUserTz(moment()).format(), tags, note: ''}}).then(() => {
-                setSelectedEntries([]);
-                enqueueSnackbar('tracker started', {variant: 'success'});
+            // Stop all active timers first in Tracker mode
+            const activeTimers = trackersResult.data?.timers || [];
+            const stopPromises = activeTimers.map((timer) =>
+                stopTimer({variables: {id: timer.id, end: inUserTz(moment()).format()}})
+            );
+
+            Promise.all(stopPromises).then(() => {
+                startTimer({variables: {start: inUserTz(moment()).format(), tags, note: ''}}).then(() => {
+                    setSelectedEntries([]);
+                    enqueueSnackbar('tracker started', {variant: 'success'});
+                });
             });
         } else {
             addTimeSpan({variables: {start: inUserTz(from).format(), end: inUserTz(to).format(), tags, note: ''}}).then(() => {
